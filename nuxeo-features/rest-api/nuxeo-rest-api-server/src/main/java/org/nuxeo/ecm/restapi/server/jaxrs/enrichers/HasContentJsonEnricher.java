@@ -36,6 +36,8 @@ import org.nuxeo.runtime.api.Framework;
 import com.fasterxml.jackson.core.JsonGenerator;
 
 /**
+ * Enricher that tells whether the document has content i.e. children if Folderish or members if Collection.
+ *
  * @since 10.3
  */
 @Setup(mode = SINGLETON, priority = REFERENCE)
