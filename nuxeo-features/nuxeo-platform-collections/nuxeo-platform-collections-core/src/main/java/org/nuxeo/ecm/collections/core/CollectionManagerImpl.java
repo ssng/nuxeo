@@ -22,15 +22,13 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.commons.lang3.StringUtils;
-import org.nuxeo.common.utils.i18n.I18NUtils;
 import org.nuxeo.ecm.collections.api.CollectionConstants;
+import org.nuxeo.ecm.collections.api.CollectionLocationService;
 import org.nuxeo.ecm.collections.api.CollectionManager;
 import org.nuxeo.ecm.collections.core.adapter.Collection;
 import org.nuxeo.ecm.collections.core.adapter.CollectionMember;
@@ -51,22 +49,13 @@ import org.nuxeo.ecm.core.api.UnrestrictedSessionRunner;
 import org.nuxeo.ecm.core.api.event.CoreEventConstants;
 import org.nuxeo.ecm.core.api.event.DocumentEventCategories;
 import org.nuxeo.ecm.core.api.pathsegment.PathSegmentService;
-import org.nuxeo.ecm.core.api.security.ACE;
-import org.nuxeo.ecm.core.api.security.ACL;
-import org.nuxeo.ecm.core.api.security.ACP;
 import org.nuxeo.ecm.core.api.security.SecurityConstants;
-import org.nuxeo.ecm.core.api.security.impl.ACLImpl;
-import org.nuxeo.ecm.core.api.security.impl.ACPImpl;
+import org.nuxeo.ecm.core.api.versioning.VersioningService;
 import org.nuxeo.ecm.core.event.Event;
 import org.nuxeo.ecm.core.event.EventService;
 import org.nuxeo.ecm.core.event.impl.DocumentEventContext;
-import org.nuxeo.ecm.core.versioning.VersioningService;
 import org.nuxeo.ecm.core.work.api.WorkManager;
-import org.nuxeo.ecm.platform.audit.service.NXAuditEventsService;
 import org.nuxeo.ecm.platform.dublincore.listener.DublinCoreListener;
-import org.nuxeo.ecm.platform.ec.notification.NotificationConstants;
-import org.nuxeo.ecm.platform.userworkspace.api.UserWorkspaceService;
-import org.nuxeo.ecm.platform.web.common.locale.LocaleProvider;
 import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.model.DefaultComponent;
 
@@ -79,8 +68,8 @@ public class CollectionManagerImpl extends DefaultComponent implements Collectio
 
     public static void disableEvents(final DocumentModel doc) {
         doc.putContextData(DublinCoreListener.DISABLE_DUBLINCORE_LISTENER, true);
-        doc.putContextData(NotificationConstants.DISABLE_NOTIFICATION_SERVICE, true);
-        doc.putContextData(NXAuditEventsService.DISABLE_AUDIT_LOGGER, true);
+        doc.putContextData(CollectionConstants.DISABLE_NOTIFICATION_SERVICE, true);
+        doc.putContextData(CollectionConstants.DISABLE_AUDIT_LOGGER, true);
         doc.putContextData(VersioningService.DISABLE_AUTO_CHECKOUT, true);
     }
 
@@ -174,11 +163,10 @@ public class CollectionManagerImpl extends DefaultComponent implements Collectio
 
     protected DocumentModel createCollection(final String newTitle, final String newDescription,
             final DocumentModel context, final CoreSession session) {
-        DocumentModel defaultCollections = getUserDefaultCollections(context, session);
-
+        DocumentModel defaultCollections = getUserDefaultCollections(session);
         Map<String, Object> options = new HashMap<>();
         options.put(CoreEventConstants.PARENT_PATH, defaultCollections.getPath().toString());
-        options.put(CoreEventConstants.DOCUMENT_MODEL_ID, newTitle);
+        options.put(CoreEventConstants.DESTINATION_NAME, newTitle);
         options.put(CoreEventConstants.DESTINATION_NAME, newTitle);
         DocumentModel newCollection = session.createDocumentModel(CollectionConstants.COLLECTION_TYPE, options);
 
@@ -189,40 +177,16 @@ public class CollectionManagerImpl extends DefaultComponent implements Collectio
         return session.createDocument(newCollection);
     }
 
-    protected DocumentModel createDefaultCollectionsRoot(final CoreSession session, DocumentModel userWorkspace) {
-        DocumentModel doc = session.createDocumentModel(userWorkspace.getPath().toString(),
-                CollectionConstants.DEFAULT_COLLECTIONS_NAME, CollectionConstants.COLLECTIONS_TYPE);
-        String title;
-        try {
-            title = I18NUtils.getMessageString("messages", CollectionConstants.DEFAULT_COLLECTIONS_TITLE, new Object[0],
-                    getLocale(session));
-        } catch (MissingResourceException e) {
-            title = CollectionConstants.DEFAULT_COLLECTIONS_TITLE;
-        }
-        doc.setPropertyValue("dc:title", title);
-        doc.setPropertyValue("dc:description", "");
-        return doc;
+    @Override
+    @Deprecated
+    public DocumentModel getUserDefaultCollections(final DocumentModel context, final CoreSession session) {
+        return getUserDefaultCollections(session);
     }
-
-    protected DocumentModel initDefaultCollectionsRoot(final CoreSession session, DocumentModel collectionsRoot) {
-        ACP acp = new ACPImpl();
-        ACE denyEverything = new ACE(SecurityConstants.EVERYONE, SecurityConstants.EVERYTHING, false);
-        ACE allowEverything = new ACE(session.getPrincipal().getName(), SecurityConstants.EVERYTHING, true);
-        ACL acl = new ACLImpl();
-        acl.setACEs(new ACE[] { allowEverything, denyEverything });
-        acp.addACL(acl);
-        collectionsRoot.setACP(acp, true);
-        return collectionsRoot;
-    }
-
 
     @Override
-    public DocumentModel getUserDefaultCollections(final DocumentModel context, final CoreSession session) {
-        final UserWorkspaceService userWorkspaceService = Framework.getService(UserWorkspaceService.class);
-        final DocumentModel userWorkspace = userWorkspaceService.getCurrentUserPersonalWorkspace(session, context);
-
-        DocumentModel defaultCollectionsRoot = createDefaultCollectionsRoot(session, userWorkspace);
-        return session.getOrCreateDocument(defaultCollectionsRoot, doc -> initDefaultCollectionsRoot(session, doc));
+    public DocumentModel getUserDefaultCollections(final CoreSession session) {
+        return Framework.getService(CollectionLocationService.class)
+                                                            .getUserDefaultCollectionsRoot(session);
     }
 
     @Override
@@ -419,15 +383,6 @@ public class CollectionManagerImpl extends DefaultComponent implements Collectio
             newCollection = session.createDocument(collectionModel);
         }
         return newCollection;
-    }
-
-    protected Locale getLocale(final CoreSession session) {
-        Locale locale;
-        locale = Framework.getService(LocaleProvider.class).getLocale(session);
-        if (locale == null) {
-            locale = Locale.getDefault();
-        }
-        return new Locale(locale.getLanguage());
     }
 
     protected void fireEvent(DocumentModel doc, CoreSession session, String eventName,

@@ -236,14 +236,21 @@ public interface CollectionManager {
     DocumentModel createCollection(final CoreSession session, String title, String description, String path);
 
     /**
+     * @deprecated since 10.3 use {@link #getUserDefaultCollections(CoreSession)} instead
+     * @since 6.0
+     */
+    @Deprecated
+    DocumentModel getUserDefaultCollections(final DocumentModel context, final CoreSession session);
+
+    /**
      * Get user collections root document.
      *
      * @param context contextual document
      * @param session the core session
      * @return the user collections root document
-     * @since 6.0
+     * @since 10.3
      */
-    DocumentModel getUserDefaultCollections(final DocumentModel context, final CoreSession session);
+    DocumentModel getUserDefaultCollections(final CoreSession session);
 
     /**
      * @param documentToBeRemoved

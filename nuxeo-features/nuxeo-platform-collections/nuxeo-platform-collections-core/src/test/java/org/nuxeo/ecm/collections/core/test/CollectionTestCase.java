@@ -32,10 +32,9 @@ import org.nuxeo.ecm.collections.api.CollectionManager;
 import org.nuxeo.ecm.collections.core.listener.CollectionAsynchrnonousQuery;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.trash.TrashService;
+import org.nuxeo.ecm.core.api.trash.TrashService;
 import org.nuxeo.ecm.core.work.api.WorkManager;
 import org.nuxeo.ecm.platform.test.PlatformFeature;
-import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
 import org.nuxeo.runtime.transaction.TransactionHelper;
@@ -44,13 +43,7 @@ import org.nuxeo.runtime.transaction.TransactionHelper;
  * @since 5.9.3
  */
 @RunWith(FeaturesRunner.class)
-@Features(PlatformFeature.class)
-@Deploy("org.nuxeo.ecm.platform.userworkspace.core")
-@Deploy("org.nuxeo.ecm.platform.collections.core")
-@Deploy("org.nuxeo.ecm.platform.userworkspace.types")
-@Deploy("org.nuxeo.ecm.platform.query.api")
-@Deploy("org.nuxeo.ecm.platform.web.common")
-@Deploy("org.nuxeo.ecm.platform.tag")
+@Features({ PlatformFeature.class, CollectionFeature.class })
 public class CollectionTestCase {
 
     @Inject
@@ -71,7 +64,7 @@ public class CollectionTestCase {
 
     protected static final String COLLECTION_DESCRIPTION = "dummy";
 
-    protected static final String COLLECTION_FOLDER_PATH = "/default-domain/UserWorkspaces/Administrator/"
+    protected static final String COLLECTION_FOLDER_PATH = "/Administrator/"
             + CollectionConstants.DEFAULT_COLLECTIONS_NAME;
 
     protected static final int MAX_CARDINALITY = (int) ((2 * CollectionAsynchrnonousQuery.MAX_RESULT) + 1);

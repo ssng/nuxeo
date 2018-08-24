@@ -30,7 +30,13 @@ public interface FavoritesManager {
 
     boolean canAddToFavorites(final DocumentModel document);
 
+    /**
+     * @deprecated since 10.3 use {@link #getFavorites(CoreSession)} instead
+     */
+    @Deprecated
     DocumentModel getFavorites(final DocumentModel context, final CoreSession session);
+
+    DocumentModel getFavorites(final CoreSession session);
 
     boolean isFavorite(final DocumentModel document, final CoreSession session);
 

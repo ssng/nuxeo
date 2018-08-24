@@ -34,6 +34,8 @@ import javax.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.nuxeo.ecm.collections.api.CollectionConstants;
+import org.nuxeo.ecm.collections.api.CollectionManager;
 import org.nuxeo.ecm.core.api.CloseableCoreSession;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
@@ -51,6 +53,7 @@ import org.nuxeo.ecm.core.test.CoreFeature;
 import org.nuxeo.ecm.platform.test.PlatformFeature;
 import org.nuxeo.ecm.platform.userworkspace.api.UserWorkspaceService;
 import org.nuxeo.ecm.platform.userworkspace.core.service.AbstractUserWorkspaceImpl;
+import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
@@ -60,6 +63,8 @@ import org.nuxeo.runtime.test.runner.FeaturesRunner;
 @Deploy("org.nuxeo.ecm.platform.userworkspace.api")
 @Deploy("org.nuxeo.ecm.platform.userworkspace.types")
 @Deploy("org.nuxeo.ecm.platform.userworkspace.core")
+@Deploy("org.nuxeo.ecm.platform.collections.core")
+@Deploy("org.nuxeo.ecm.platform.web.common")
 public class TestUserWorkspace {
 
     @Inject
@@ -77,7 +82,7 @@ public class TestUserWorkspace {
     @Test
     public void testRestrictedAccess() throws Exception {
         try (CloseableCoreSession userSession = coreFeature.openCoreSession("toto")) {
-            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession, null);
+            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
 
             // check creator
@@ -115,20 +120,17 @@ public class TestUserWorkspace {
 
         try (CloseableCoreSession userSession = coreFeature.openCoreSession("toto")) {
             // access from root
-            DocumentModel context = userSession.getRootDocument();
-            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession, null);
+            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
             assertTrue(uw.getPathAsString().startsWith("/default-domain"));
 
             // access form default domain
-            context = userSession.getDocument(ws1.getRef());
-            uw = uwm.getCurrentUserPersonalWorkspace(userSession, context);
+            uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
             assertTrue(uw.getPathAsString().startsWith("/default-domain"));
 
             // access form alternate domain
-            context = userSession.getDocument(ws2.getRef());
-            uw = uwm.getCurrentUserPersonalWorkspace(userSession, context);
+            uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
             assertTrue(uw.getPathAsString(), uw.getPathAsString().startsWith("/default-domain"));
 
@@ -136,7 +138,7 @@ public class TestUserWorkspace {
             session.removeDocument(new PathRef("/default-domain"));
             session.save();
             userSession.save();
-            uw = uwm.getCurrentUserPersonalWorkspace(userSession, context);
+            uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
             assertTrue(uw.getPathAsString().startsWith("/alternate-domain"));
         }
@@ -186,11 +188,11 @@ public class TestUserWorkspace {
     @Test
     public void testWorkspaceNameCollision() {
         try (CloseableCoreSession userSession = coreFeature.openCoreSession(alongname("user1"))) {
-            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession, userSession.getRootDocument());
+            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
         }
         try (CloseableCoreSession userSession = coreFeature.openCoreSession(alongname("user2"))) {
-            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession, userSession.getRootDocument());
+            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
         }
     }
@@ -241,7 +243,7 @@ public class TestUserWorkspace {
         try (CloseableCoreSession userSession = coreFeature.openCoreSession("user1")) {
             context = userSession.getRootDocument();
 
-            uw = uwm.getCurrentUserPersonalWorkspace(userSession, context);
+            uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNotNull(uw);
             assertEquals(user1WorkspacePath, uw.getPathAsString());
         }
@@ -312,7 +314,7 @@ public class TestUserWorkspace {
 
         try (CloseableCoreSession userSession = coreFeature.openCoreSession(username)) {
             Principal principal = userSession.getPrincipal();
-            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession, userSession.getRootDocument());
+            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             DocumentModel bar = userSession.createDocumentModel(uw.getPathAsString(), "bar", "File");
             bar = userSession.createDocument(bar);
             userSession.save();
@@ -337,8 +339,26 @@ public class TestUserWorkspace {
         session.removeDocuments(refs.toArray(new DocumentRef[refs.size()]));
         session.save();
         try (CloseableCoreSession userSession = coreFeature.openCoreSession("toto")) {
-            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession, null);
+            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession);
             assertNull(uw);
+        }
+    }
+
+    /**
+     * @since 10.3
+     */
+    @Test
+    public void testCollectionsAreInUserWorkspace() {
+        try (CloseableCoreSession userSession = coreFeature.openCoreSession("toto")) {
+            DocumentModel uw = uwm.getCurrentUserPersonalWorkspace(userSession);
+            DocumentModel foo = session.createDocumentModel(uw.getPathAsString(), "foo", "File");
+            foo = session.createDocument(foo);
+            CollectionManager collectioManager = Framework.getService(CollectionManager.class);
+            collectioManager.addToNewCollection("newCollection", null, foo, userSession);
+            session.save();
+            assertTrue(session.exists(new PathRef(
+                    uw.getPathAsString() + "/" + CollectionConstants.DEFAULT_COLLECTIONS_NAME + "/newCollection")));
+
         }
     }
 

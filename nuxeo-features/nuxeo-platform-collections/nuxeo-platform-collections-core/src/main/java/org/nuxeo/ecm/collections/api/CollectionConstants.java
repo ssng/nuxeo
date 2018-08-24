@@ -23,6 +23,10 @@ package org.nuxeo.ecm.collections.api;
  */
 public class CollectionConstants {
 
+    public static final String DISABLE_NOTIFICATION_SERVICE = "disableNotificationService";
+
+    public static final String DISABLE_AUDIT_LOGGER = "disableAuditLogger";
+
     public static final String COLLECTABLE_FACET = "CollectionMember";
 
     public static final String NOT_COLLECTABLE_FACET = "NotCollectionMember";

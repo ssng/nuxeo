@@ -24,7 +24,6 @@ import static org.junit.Assert.assertNotNull;
 
 import javax.inject.Inject;
 
-import org.junit.After;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nuxeo.ecm.collections.api.CollectionManager;
@@ -34,6 +33,7 @@ import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DataModel;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentRef;
+import org.nuxeo.ecm.core.api.PathRef;
 import org.nuxeo.ecm.core.api.security.ACE;
 import org.nuxeo.ecm.core.api.security.ACL;
 import org.nuxeo.ecm.core.api.security.ACP;
@@ -41,7 +41,6 @@ import org.nuxeo.ecm.core.api.security.impl.ACLImpl;
 import org.nuxeo.ecm.core.api.security.impl.ACPImpl;
 import org.nuxeo.ecm.core.test.CoreFeature;
 import org.nuxeo.ecm.platform.test.PlatformFeature;
-import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
 
@@ -49,13 +48,7 @@ import org.nuxeo.runtime.test.runner.FeaturesRunner;
  * @since 5.9.3
  */
 @RunWith(FeaturesRunner.class)
-@Features(PlatformFeature.class)
-@Deploy("org.nuxeo.ecm.platform.userworkspace.core")
-@Deploy("org.nuxeo.ecm.platform.collections.core")
-@Deploy("org.nuxeo.ecm.platform.userworkspace.types")
-@Deploy("org.nuxeo.ecm.platform.query.api")
-@Deploy("org.nuxeo.ecm.platform.web.common")
-@Deploy("org.nuxeo.ecm.platform.tag")
+@Features({ PlatformFeature.class, CollectionFeature.class })
 public class CollectionRightsTest {
 
     @Inject
@@ -66,15 +59,6 @@ public class CollectionRightsTest {
 
     @Inject
     CoreSession session;
-
-    protected CoreSession userSession;
-
-    @After
-    public void tearDown() throws Exception {
-        if (userSession != null) {
-            ((CloseableCoreSession) userSession).close();
-        }
-    }
 
     @Test
     public void testDocumentNotAlteredAfterAddedToCollection() {
@@ -97,24 +81,33 @@ public class CollectionRightsTest {
 
         session.save();
 
+        ace = new ACE("user1", "Everything", true);
+        acl = new ACLImpl();
+        acl.add(ace);
+        acp = new ACPImpl();
+        acp.addACL(acl);
+        DocumentModel root = session.getDocument(new PathRef("/"));
+        root.setACP(acp, true);
+        session.saveDocument(root);
+
         DocumentRef docRef = testFile.getRef();
 
         String repositoryName = coreFeature.getStorageConfiguration().getRepositoryName();
-        userSession = CoreInstance.openCoreSession(repositoryName, "user1");
+        try (CloseableCoreSession userSession = CoreInstance.openCoreSession(repositoryName, "user1")) {
+            testFile = userSession.getDocument(docRef);
 
-        testFile = userSession.getDocument(docRef);
+            collectionManager.addToNewCollection("Collection1", "blablabla", testFile, userSession);
 
-        collectionManager.addToNewCollection("Collection1", "blablabla", testFile, userSession);
+            DataModel dm = testFile.getDataModel("dublincore");
 
-        DataModel dm = testFile.getDataModel("dublincore");
+            String[] contributorsArray = (String[]) dm.getData("contributors");
 
-        String[] contributorsArray = (String[]) dm.getData("contributors");
+            assertNotNull(contributorsArray);
 
-        assertNotNull(contributorsArray);
+            assertEquals(1, contributorsArray.length);
 
-        assertEquals(1, contributorsArray.length);
-
-        assertFalse(contributorsArray[0].equals("user1"));
+            assertFalse(contributorsArray[0].equals("user1"));
+        }
 
     }
 

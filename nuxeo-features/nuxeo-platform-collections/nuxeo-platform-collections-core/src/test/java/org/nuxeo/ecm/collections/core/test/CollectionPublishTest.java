@@ -31,23 +31,19 @@ import javax.inject.Inject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nuxeo.ecm.collections.api.FavoritesManager;
+import org.nuxeo.ecm.collections.core.adapter.Collection;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.PathRef;
-import org.nuxeo.ecm.core.api.SortInfo;
 import org.nuxeo.ecm.core.event.EventService;
-import org.nuxeo.ecm.platform.query.api.PageProvider;
 import org.nuxeo.ecm.platform.query.api.PageProviderService;
 import org.nuxeo.ecm.platform.query.nxql.CoreQueryDocumentPageProvider;
-import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
 import org.nuxeo.runtime.transaction.TransactionHelper;
 
 @RunWith(FeaturesRunner.class)
 @Features(CollectionFeature.class)
-@Deploy("org.nuxeo.ecm.user.center.dashboard")
-@Deploy("org.nuxeo.ecm.platform.tag")
 public class CollectionPublishTest {
 
     protected static final String TEST_FILE_NAME = "testFile";
@@ -75,13 +71,10 @@ public class CollectionPublishTest {
         assertTrue(favoritesManager.isFavorite(testFile, session));
 
         waitForAsyncCompletion();
-        List<SortInfo> sortInfos = null;
         Map<String, Serializable> props = new HashMap<String, Serializable>();
         props.put(CoreQueryDocumentPageProvider.CORE_SESSION_PROPERTY, (Serializable) session);
-        DocumentModel favoritesDoc = favoritesManager.getFavorites(null, session);
-        PageProvider<DocumentModel> pageProvider = (PageProvider<DocumentModel>) pps.getPageProvider("user_favorites",
-                sortInfos, null, null, props, new Object[] { favoritesDoc.getId() });
-        List<DocumentModel> list = pageProvider.getCurrentPage();
+        DocumentModel favoritesDoc = favoritesManager.getFavorites(session);
+        List<String> list = favoritesDoc.getAdapter(Collection.class).getCollectedDocumentIds();
         assertEquals(1, list.size());
 
         PathRef sectionsRootRef = new PathRef("/default-domain/sections");
@@ -92,8 +85,8 @@ public class CollectionPublishTest {
         sectionDoc = session.createDocument(sectionDoc);
         session.publishDocument(testFile, sectionDoc);
         waitForAsyncCompletion();
-        pageProvider.refresh();
-        list = pageProvider.getCurrentPage();
+        favoritesDoc = favoritesManager.getFavorites(session);
+        list = favoritesDoc.getAdapter(Collection.class).getCollectedDocumentIds();
         assertEquals(1, list.size());
     }
 

@@ -24,10 +24,7 @@ import java.util.List;
 
 import org.junit.Test;
 import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.api.LifeCycleConstants;
 import org.nuxeo.ecm.core.api.PathRef;
-import org.nuxeo.ecm.core.trash.TrashService;
-import org.nuxeo.runtime.api.Framework;
 
 /**
  * @since 6.0

@@ -23,15 +23,14 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.nuxeo.ecm.collections.api.CollectionConstants;
 import org.nuxeo.ecm.collections.api.CollectionManager;
 import org.nuxeo.ecm.collections.core.adapter.CollectionMember;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.IdRef;
-import org.nuxeo.ecm.core.versioning.VersioningService;
+import org.nuxeo.ecm.core.api.versioning.VersioningService;
 import org.nuxeo.ecm.core.work.AbstractWork;
-import org.nuxeo.ecm.platform.audit.service.NXAuditEventsService;
 import org.nuxeo.ecm.platform.dublincore.listener.DublinCoreListener;
-import org.nuxeo.ecm.platform.ec.notification.NotificationConstants;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -94,8 +93,8 @@ public class DuplicateCollectionMemberWork extends AbstractWork {
                         // We want to disable the following listener on a
                         // collection member when it is added to a collection
                         collectionMember.putContextData(DublinCoreListener.DISABLE_DUBLINCORE_LISTENER, true);
-                        collectionMember.putContextData(NotificationConstants.DISABLE_NOTIFICATION_SERVICE, true);
-                        collectionMember.putContextData(NXAuditEventsService.DISABLE_AUDIT_LOGGER, true);
+                        collectionMember.putContextData(CollectionConstants.DISABLE_NOTIFICATION_SERVICE, true);
+                        collectionMember.putContextData(CollectionConstants.DISABLE_AUDIT_LOGGER, true);
                         collectionMember.putContextData(VersioningService.DISABLE_AUTO_CHECKOUT, true);
 
                         CollectionMember collectionMemberAdapter = collectionMember.getAdapter(CollectionMember.class);
