@@ -45,6 +45,6 @@ public class FetchFavorites {
 
     @OperationMethod
     public DocumentModel run() throws OperationException {
-        return favoritesManager.getFavorites(session.getRootDocument(), session);
+        return favoritesManager.getFavorites(session);
     }
 }

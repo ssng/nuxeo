@@ -13,11 +13,4 @@
       class="org.nuxeo.ecm.platform.userworkspace.core.service.DefaultUserWorkspaceServiceImpl" />
   </extension>
 
-  <extension
-    target="org.nuxeo.ecm.collections.CollectionLocationService"
-    point="collectionLocation">
-    <collectionLocation
-      class="org.nuxeo.ecm.platform.userworkspace.core.service.UserWorkspaceCollectionLocationServiceImpl" />
-  </extension>
-
 </component>

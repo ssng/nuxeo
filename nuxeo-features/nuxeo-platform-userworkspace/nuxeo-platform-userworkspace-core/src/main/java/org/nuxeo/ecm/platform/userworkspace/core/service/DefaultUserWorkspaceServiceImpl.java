@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.nuxeo.common.utils.Path;
+import org.nuxeo.ecm.collections.api.CollectionLocationService;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.NuxeoPrincipal;
@@ -45,7 +46,8 @@ import org.nuxeo.ecm.platform.userworkspace.constants.UserWorkspaceConstants;
  *
  * @author tiry
  */
-public class DefaultUserWorkspaceServiceImpl extends AbstractUserWorkspaceImpl implements UserWorkspaceService {
+public class DefaultUserWorkspaceServiceImpl extends AbstractUserWorkspaceImpl
+        implements UserWorkspaceService, CollectionLocationService {
 
     private static final long serialVersionUID = 1L;
 

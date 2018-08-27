@@ -28,8 +28,9 @@ import org.nuxeo.ecm.core.api.security.ACP;
 import org.nuxeo.ecm.core.api.security.SecurityConstants;
 import org.nuxeo.ecm.core.api.security.impl.ACLImpl;
 import org.nuxeo.ecm.core.api.security.impl.ACPImpl;
+import org.nuxeo.runtime.model.DefaultComponent;
 
-public class CollectionLocationServiceTestImpl implements CollectionLocationService {
+public class CollectionLocationServiceTestImpl extends DefaultComponent implements CollectionLocationService {
 
     @Override
     public DocumentModel getUserDefaultCollectionsRoot(CoreSession session) {

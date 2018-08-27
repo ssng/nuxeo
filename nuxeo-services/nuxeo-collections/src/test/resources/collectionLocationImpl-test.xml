@@ -6,11 +6,11 @@
    This test implementation locates user collections and favorites at the root.
   </documentation>
 
-  <extension
-    target="org.nuxeo.ecm.collections.CollectionLocationService"
-    point="collectionLocation">
-    <collectionLocation
-      class="org.nuxeo.ecm.collections.core.test.CollectionLocationServiceTestImpl" />
-  </extension>
+  <implementation
+    class="org.nuxeo.ecm.collections.core.test.CollectionLocationServiceTestImpl" />
+
+  <service>
+    <provide interface="org.nuxeo.ecm.collections.api.CollectionLocationService" />
+  </service>
 
 </component>
