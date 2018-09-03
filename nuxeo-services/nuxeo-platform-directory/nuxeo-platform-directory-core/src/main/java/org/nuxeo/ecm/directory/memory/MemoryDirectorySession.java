@@ -33,13 +33,19 @@ import java.util.Set;
 
 import org.nuxeo.ecm.core.api.DataModel;
 import org.nuxeo.ecm.core.api.DocumentModel;
+import org.nuxeo.ecm.core.api.DocumentModelComparator;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.PropertyException;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
 import org.nuxeo.ecm.core.api.model.PropertyNotFoundException;
 import org.nuxeo.ecm.core.api.security.SecurityConstants;
+import org.nuxeo.ecm.core.query.sql.model.OrderByExpr;
+import org.nuxeo.ecm.core.query.sql.model.OrderByList;
+import org.nuxeo.ecm.core.query.sql.model.Predicate;
+import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
+import org.nuxeo.ecm.directory.BaseSession.FieldDetector;
 
 /**
  * Trivial in-memory implementation of a Directory to use in unit tests.
@@ -239,6 +245,44 @@ public class MemoryDirectorySession extends BaseSession {
             getDirectory().orderEntries(results, orderBy);
         }
         return applyQueryLimits(results, limit, offset);
+    }
+
+    @Override
+    public DocumentModelList query(QueryBuilder queryBuilder, boolean fetchReferences, boolean countTotal) {
+        if (!hasPermission(SecurityConstants.READ)) {
+            return new DocumentModelListImpl();
+        }
+        if (FieldDetector.hasField(queryBuilder.predicate(), getPasswordField())) {
+            throw new DirectoryException("Cannot filter on password");
+        }
+        DocumentModelList results = new DocumentModelListImpl();
+        Predicate expression = queryBuilder.predicate();
+        OrderByList orders = queryBuilder.orders();
+        int limit = Math.max(0, (int) queryBuilder.limit());
+        int offset = Math.max(0, (int) queryBuilder.offset());
+
+        // do the search
+        MemoryDirectoryExpressionEvaluator evaluator = new MemoryDirectoryExpressionEvaluator(getDirectory());
+        for (Entry<String, Map<String, Object>> datae : data.entrySet()) {
+            if (evaluator.matchesEntry(expression, datae.getValue())) {
+                results.add(getEntry(datae.getKey()));
+            }
+        }
+        // order entries
+        if (!orders.isEmpty()) {
+            Map<String, String> orderBy = new HashMap<>();
+            for (OrderByExpr ob : orders) {
+                String ascOrDesc = ob.isDescending ? "desc" : DocumentModelComparator.ORDER_ASC;
+                orderBy.put(ob.reference.name, ascOrDesc);
+            }
+            getDirectory().orderEntries(results, orderBy);
+        }
+        results = applyQueryLimits(results, limit, offset);
+        if ((limit != 0 || offset != 0) && !countTotal) {
+            // compat with other directories
+            ((DocumentModelListImpl) results).setTotalSize(-2);
+        }
+        return results;
     }
 
     @Override

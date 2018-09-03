@@ -42,6 +42,9 @@ import org.nuxeo.ecm.core.api.impl.DocumentModelImpl;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
 import org.nuxeo.ecm.core.api.local.ClientLoginModule;
 import org.nuxeo.ecm.core.api.security.SecurityConstants;
+import org.nuxeo.ecm.core.query.sql.model.DefaultQueryVisitor;
+import org.nuxeo.ecm.core.query.sql.model.MultiExpression;
+import org.nuxeo.ecm.core.query.sql.model.Predicate;
 import org.nuxeo.ecm.core.schema.types.Field;
 import org.nuxeo.ecm.directory.BaseDirectoryDescriptor.SubstringMatchType;
 import org.nuxeo.ecm.directory.api.DirectoryDeleteConstraint;
@@ -491,7 +494,9 @@ public abstract class BaseSession implements Session, EntrySource {
     protected DocumentModelList applyQueryLimits(DocumentModelList results, int limit, int offset) {
         offset = Math.max(0, offset);
         int toIndex = limit >= 1 ? Math.min(results.size(), offset + limit) : results.size();
-        return new DocumentModelListImpl(results.subList(offset, toIndex));
+        DocumentModelListImpl sublist = new DocumentModelListImpl(results.subList(offset, toIndex));
+        sublist.setTotalSize(results.size());
+        return sublist;
     }
 
     @Override
@@ -556,5 +561,39 @@ public abstract class BaseSession implements Session, EntrySource {
 
     /** To be implemented for specific deletion. */
     protected abstract void deleteEntryWithoutReferences(String id);
+
+    /**
+     * Visitor for a query to check if it contains a reference to a given field.
+     *
+     * @since 10.3
+     */
+    public static class FieldDetector extends DefaultQueryVisitor {
+
+        private static final long serialVersionUID = 1L;
+
+        protected final String field;
+
+        protected boolean hasField;
+
+        /**
+         * Checks if the predicate contains the field.
+         */
+        public static boolean hasField(Predicate predicate, String field) {
+            FieldDetector visitor = new FieldDetector(field);
+            visitor.visitMultiExpression((MultiExpression) predicate);
+            return visitor.hasField;
+        }
+
+        public FieldDetector(String passwordField) {
+            this.field = passwordField;
+        }
+
+        @Override
+        public void visitReference(org.nuxeo.ecm.core.query.sql.model.Reference node) {
+            if (node.name.equals(field)) {
+                hasField = true;
+            }
+        }
+    }
 
 }

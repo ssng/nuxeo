@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.After;
 import org.junit.Before;
@@ -42,9 +43,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
+import org.nuxeo.ecm.core.query.QueryParseException;
+import org.nuxeo.ecm.core.query.sql.model.OrderByExprs;
+import org.nuxeo.ecm.core.query.sql.model.Predicates;
+import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.Directory;
 import org.nuxeo.ecm.directory.DirectoryException;
+import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
 import org.nuxeo.ecm.platform.login.test.ClientLoginFeature;
 import org.nuxeo.ecm.platform.login.test.DummyNuxeoLoginModule;
@@ -319,6 +325,88 @@ public class TestMemoryDirectory {
         filter.put("a", "");
         fulltext.add("a");
         assertEquals(1, dir.query(filter, fulltext).size());
+    }
+
+    @Test
+    public void testQueryWithBuilder() throws Exception {
+        Map<String, Object> map;
+        map = new HashMap<>();
+        map.put("i", "2");
+        dir.createEntry(map);
+        map = new HashMap<>();
+        map.put("i", "3");
+        dir.createEntry(map);
+
+        try (Session session = (MemoryDirectorySession) memDir.getSession()) {
+            // everything (empty predicates)
+            QueryBuilder queryBuilder = new QueryBuilder();
+            DocumentModelList list = session.query(queryBuilder, false, false);
+            assertIds(list, "1", "2", "3");
+
+            // i = '1'
+            queryBuilder = new QueryBuilder().predicates(Predicates.eq("i", "1"));
+            list = session.query(queryBuilder, false, false);
+            assertIds(list, "1");
+
+            // i = '1' OR i = '2'
+            queryBuilder = new QueryBuilder().predicates(
+                    Predicates.or(Predicates.eq("i", "1"), Predicates.eq("i", "2")));
+            list = session.query(queryBuilder, false, false);
+            assertIds(list, "1", "2");
+
+            // i = '1' AND a = 'NotMe'
+            queryBuilder = new QueryBuilder().predicates(
+                    Predicates.and(Predicates.eq("i", "1"), Predicates.eq("a", "NotMe")));
+            list = session.query(queryBuilder, false, false);
+            assertIds(list); // empty
+
+            // order/paging/totalSize
+
+            // no count total
+            queryBuilder = new QueryBuilder().order(OrderByExprs.asc("i")).limit(1);
+            list = session.query(queryBuilder, false, false);
+            assertIds(list, "1");
+            assertEquals(-2, list.totalSize());
+
+            // count total
+            queryBuilder = new QueryBuilder().order(OrderByExprs.desc("i")).limit(1);
+            list = session.query(queryBuilder, false, true);
+            assertIds(list, "3");
+            assertEquals(3, list.totalSize());
+
+            // offset
+            queryBuilder = new QueryBuilder().order(OrderByExprs.desc("i")).limit(1).offset(1);
+            list = session.query(queryBuilder, false, true);
+            assertIds(list, "2");
+            assertEquals(3, list.totalSize());
+
+            // error cases
+
+            // cannot filter on password
+            queryBuilder = new QueryBuilder().predicates(Predicates.eq("pw", "secreet"));
+            try {
+                session.query(queryBuilder, false, false);
+                fail("should throw");
+            } catch (DirectoryException e) {
+                assertEquals("Cannot filter on password", e.getMessage());
+            }
+
+            // no such column
+            queryBuilder = new QueryBuilder().predicates(Predicates.eq("notAProperty", "foo"));
+            try {
+                session.query(queryBuilder, false, false);
+                fail("should throw");
+            } catch (QueryParseException e) {
+                assertEquals("No column: notAProperty for directory: mydir", e.getMessage());
+            }
+        }
+    }
+
+    protected static void assertIds(DocumentModelList list, String... expected) {
+        Set<String> users = list.stream()
+                                .map(doc -> (String) doc.getProperty(SCHEMA_NAME, "i"))
+                                .collect(Collectors.toSet());
+        assertEquals(new HashSet<>(Arrays.asList(expected)), users);
     }
 
     @Test

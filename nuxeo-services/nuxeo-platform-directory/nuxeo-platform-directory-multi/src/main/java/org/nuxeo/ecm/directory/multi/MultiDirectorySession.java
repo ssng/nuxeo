@@ -39,6 +39,7 @@ import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.PropertyException;
 import org.nuxeo.ecm.core.api.impl.DocumentModelListImpl;
 import org.nuxeo.ecm.core.api.security.SecurityConstants;
+import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
 import org.nuxeo.ecm.core.schema.SchemaManager;
 import org.nuxeo.ecm.core.schema.types.Field;
 import org.nuxeo.ecm.core.schema.types.Schema;
@@ -738,6 +739,11 @@ public class MultiDirectorySession extends BaseSession {
             getDirectory().orderEntries(results, orderBy);
         }
         return applyQueryLimits(results, limit, offset);
+    }
+
+    @Override
+    public DocumentModelList query(QueryBuilder queryBuilder, boolean fetchReferences, boolean countTotal) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
