@@ -277,6 +277,10 @@ public class TypeRegistry extends AbstractContributionRegistry<String, TypeDescr
     }
 
     protected void installTypeContribution(String key, TypeDescriptor object) {
+        if (module.sic == null) {
+            throw new NullPointerException(
+                    "null ServerInjectableProviderContext for " + key + ", type=" + object.getId());
+        }
         ResourceComponentConstructor constructor = new ResourceComponentConstructor(module.sic, ComponentScope.PerRequest, IntrospectionModeller.createResource(object.clazz.get()));
         AbstractResourceType type = new ResourceTypeImpl(engine, module, null, object.type, object.clazz,
                 constructor, object.visibility);

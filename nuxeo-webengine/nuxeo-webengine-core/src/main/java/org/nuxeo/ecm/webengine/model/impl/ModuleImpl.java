@@ -95,6 +95,9 @@ public class ModuleImpl implements Module {
 
     public ModuleImpl(WebEngine engine, ModuleImpl superModule, ModuleConfiguration config,
             ServerInjectableProviderContext sic) {
+        if (sic == null) {
+            throw new NullPointerException("null ServerInjectableProviderContext for module " + config.getName());
+        }
         this.engine = engine;
         this.superModule = superModule;
         this.sic = sic;

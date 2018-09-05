@@ -68,6 +68,9 @@ public class ModuleRoot extends DefaultObject implements ModuleResource {
         if (ctx.getModule() != null) { // just a resource, not a module root
             return;
         }
+        if (sic == null) {
+            throw new NullPointerException("null ServerInjectableProviderContext in " + this);
+        }
         try {
             ctx.setJerseyContext(sic, hc);
             Module module = findModule(ctx);
