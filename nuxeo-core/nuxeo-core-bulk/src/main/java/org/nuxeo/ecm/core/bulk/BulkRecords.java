@@ -21,9 +21,11 @@ package org.nuxeo.ecm.core.bulk;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.nuxeo.lib.stream.computation.Record;
+import org.nuxeo.lib.stream.computation.Watermark;
 
 /**
  * Helper class to handle {@link Record} in bulk services.
@@ -36,6 +38,12 @@ public class BulkRecords {
 
     protected static final String VALUE_SEPARATOR = "_";
 
+    protected static final EnumSet<Record.Flag> DEFAULT_FLAG = EnumSet.of(Record.Flag.DEFAULT);
+
+    public static final EnumSet<Record.Flag> START_FLAG = EnumSet.of(Record.Flag.PAUSE);
+
+    public static final EnumSet<Record.Flag> END_FLAG = EnumSet.of(Record.Flag.USER1);
+
     private BulkRecords() {
         // no instance allowed
     }
@@ -43,10 +51,33 @@ public class BulkRecords {
     /**
      * @return a new {@link Record} containing document ids respecting bulk format
      */
-    public static Record of(String commandId, long currentCount, List<String> documentIds) {
+    public static Record of(String commandId, long currentCount, List<String> documentIds, EnumSet<Record.Flag> flags) {
         String key = commandId + KEY_SEPARATOR + currentCount;
         String value = String.join(VALUE_SEPARATOR, documentIds);
-        return Record.of(key, value.getBytes(UTF_8));
+        return new Record(key, value.getBytes(UTF_8), Watermark.ofNow().getValue(), flags);
+    }
+
+    /**
+     * @return a new {@link Record} containing document ids respecting bulk format
+     */
+    public static Record of(String commandId, long currentCount, List<String> documentIds) {
+        return of(commandId, currentCount, documentIds, DEFAULT_FLAG);
+    }
+
+    /**
+     * Indicates if this is the end of a set of records
+     */
+    public static boolean isEnd(Record record) {
+        EnumSet<Record.Flag> flags = record.getFlags();
+        return flags.contains(Record.Flag.USER1);
+    }
+
+    /**
+     * Indicates if this is the start of a set of records
+     */
+    public static boolean isStart(Record record) {
+        EnumSet<Record.Flag> flags = record.getFlags();
+        return flags.contains(Record.Flag.PAUSE);
     }
 
     /**

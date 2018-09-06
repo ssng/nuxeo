@@ -20,6 +20,7 @@ package org.nuxeo.ecm.core.bulk;
 
 import static java.lang.Integer.max;
 import static java.lang.Math.min;
+import static java.util.Collections.emptyList;
 import static org.nuxeo.ecm.core.bulk.BulkComponent.BULK_KV_STORE_NAME;
 import static org.nuxeo.ecm.core.bulk.BulkServiceImpl.DOCUMENTSET_ACTION_NAME;
 import static org.nuxeo.ecm.core.bulk.BulkServiceImpl.STATUS;
@@ -161,6 +162,8 @@ public class StreamBulkProcessor implements StreamProcessorTopology {
                     return;
                 }
                 currentStatus.setState(SCROLLING_RUNNING);
+                //starting
+                context.produceRecord(command.getAction(), BulkRecords.of(commandId, 0, emptyList(), BulkRecords.START_FLAG));
                 context.produceRecord(KVWRITER_ACTION_NAME, commandId,
                         BulkCodecs.getBulkStatusCodec().encode(currentStatus));
 
@@ -208,6 +211,11 @@ public class StreamBulkProcessor implements StreamProcessorTopology {
                         currentStatus.setCount(documentCount);
                         context.produceRecord(KVWRITER_ACTION_NAME, commandId,
                                 BulkCodecs.getBulkStatusCodec().encode(currentStatus));
+
+                        // End
+                        context.produceRecord(command.getAction(),
+                                BulkRecords.of(commandId, 0, emptyList(), BulkRecords.END_FLAG));
+                        context.askForCheckpoint();
 
                     } finally {
                         loginContext.logout();
@@ -280,7 +288,7 @@ public class StreamBulkProcessor implements StreamProcessorTopology {
             BulkStatus status = BulkCodecs.getBulkStatusCodec().decode(kvStore.get(commandId + STATUS));
             long previousProcessedDocs = status.getProcessed();
             long currentProcessedDocs = previousProcessedDocs + processedDocs;
-            if (currentProcessedDocs == status.getCount()) {
+            if (currentProcessedDocs >= status.getCount()) {
                 status.setState(COMPLETED);
             }
             status.setProcessed(currentProcessedDocs);

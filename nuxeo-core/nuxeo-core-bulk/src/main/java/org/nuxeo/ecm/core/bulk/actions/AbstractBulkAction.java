@@ -43,6 +43,7 @@ import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.ecm.core.bulk.BulkCodecs;
 import org.nuxeo.ecm.core.bulk.BulkCommand;
 import org.nuxeo.ecm.core.bulk.BulkCounter;
+import org.nuxeo.ecm.core.bulk.BulkRecords;
 import org.nuxeo.lib.stream.computation.AbstractComputation;
 import org.nuxeo.lib.stream.computation.Computation;
 import org.nuxeo.lib.stream.computation.ComputationContext;
@@ -127,6 +128,13 @@ public abstract class AbstractBulkAction implements StreamProcessorTopology {
         @Override
         public void processRecord(ComputationContext context, String inputStreamName, Record record) {
             String commandId = commandIdFrom(record);
+            if (BulkRecords.isStart(record)) {
+                startComputation(commandId);
+            } else if (BulkRecords.isEnd(record)) {
+                endComputation(commandId);
+                context.askForCheckpoint();
+                return;
+            }
             if (currentCommandId == null) {
                 // first time we need to process something
                 loadCurrentBulkCommandContext(commandId);
@@ -141,6 +149,16 @@ public abstract class AbstractBulkAction implements StreamProcessorTopology {
             if (documentIds.size() >= size) {
                 processBatch(context);
             }
+        }
+
+        public void startComputation(String commandId) {
+            getLog().debug(
+                    String.format("Starting command: %s", commandId));
+        }
+
+        public void endComputation(String commandId) {
+            getLog().debug(
+                    String.format("Ending command: %s", commandId));
         }
 
         @Override
