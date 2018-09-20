@@ -42,6 +42,10 @@ object Feeders {
     Iterator.continually(Redis.getRandomDoc())
   }
 
+  def createRandomFolderFeeder() = {
+    Iterator.continually(Redis.getRandomFolder())
+  }
+
   // Tell if a redis feeder is not empty
   def notEmpty(session:Session) = {
     session(Constants.END_OF_FEED).asOption[String] == None
