@@ -29,8 +29,8 @@ import static org.nuxeo.ecm.core.io.registry.MarshallingConstants.ENTITY_FIELD_N
 import java.time.Instant;
 
 import org.junit.Test;
-import org.nuxeo.ecm.core.bulk.BulkStatus;
-import org.nuxeo.ecm.core.bulk.BulkStatus.State;
+import org.nuxeo.ecm.core.bulk.message.BulkStatus;
+import org.nuxeo.ecm.core.bulk.message.BulkStatus.State;
 import org.nuxeo.ecm.core.bulk.CoreBulkFeature;
 import org.nuxeo.ecm.core.io.marshallers.json.AbstractJsonWriterTest;
 import org.nuxeo.ecm.core.io.marshallers.json.JsonAssert;

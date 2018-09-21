@@ -17,16 +17,17 @@
  *     Funsho David
  */
 
-package org.nuxeo.ecm.core.bulk;
+package org.nuxeo.ecm.core.bulk.message;
 
 import java.io.Serializable;
 import java.time.Instant;
 
 import org.apache.avro.reflect.AvroEncode;
 import org.nuxeo.ecm.core.bulk.io.InstantAsLongEncoding;
+import org.nuxeo.ecm.core.bulk.message.BulkCommand;
 
 /**
- * This object holds the current bulk command execution status.
+ * A message representing a command status.
  * <p/>
  * This aggregates status and metrics of documentSet creation and action computation.
  *
@@ -34,7 +35,7 @@ import org.nuxeo.ecm.core.bulk.io.InstantAsLongEncoding;
  */
 public class BulkStatus implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 20181021L;
 
     /**
      * Possible states of bulk execution.
@@ -50,7 +51,7 @@ public class BulkStatus implements Serializable {
         RUNNING,
 
         /** System has finished to scroll. */
-        COMPLETED;
+        COMPLETED
 
     }
 
@@ -72,7 +73,7 @@ public class BulkStatus implements Serializable {
     protected long count;
 
     /**
-     * Gets bulk id.
+     * Gets command id.
      *
      * @return the id
      */

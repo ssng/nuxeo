@@ -21,10 +21,10 @@ package org.nuxeo.ecm.core.bulk;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.nuxeo.ecm.core.bulk.BulkComponent.BULK_KV_STORE_NAME;
 import static org.nuxeo.ecm.core.bulk.BulkComponent.BULK_LOG_MANAGER_NAME;
-import static org.nuxeo.ecm.core.bulk.BulkStatus.State.COMPLETED;
-import static org.nuxeo.ecm.core.bulk.BulkStatus.State.SCHEDULED;
-import static org.nuxeo.ecm.core.bulk.StreamBulkProcessor.COUNTER_ACTION_NAME;
-import static org.nuxeo.ecm.core.bulk.StreamBulkProcessor.KVWRITER_ACTION_NAME;
+import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.COMPLETED;
+import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.SCHEDULED;
+import static org.nuxeo.ecm.core.bulk.BulkProcessor.COUNTER_ACTION_NAME;
+import static org.nuxeo.ecm.core.bulk.BulkProcessor.KVWRITER_ACTION_NAME;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -34,6 +34,8 @@ import java.util.UUID;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.nuxeo.ecm.core.bulk.message.BulkCommand;
+import org.nuxeo.ecm.core.bulk.message.BulkStatus;
 import org.nuxeo.lib.stream.computation.Record;
 import org.nuxeo.lib.stream.log.LogAppender;
 import org.nuxeo.lib.stream.log.LogManager;
@@ -69,7 +71,7 @@ public class BulkServiceImpl implements BulkService {
         // create the command id and status
         String commandId = UUID.randomUUID().toString();
 
-        byte[] commandAsBytes = BulkCodecs.getBulkCommandCodec().encode(command);
+        byte[] commandAsBytes = BulkCodecs.getCommandCodec().encode(command);
 
         // store the bulk command and status in the key/value store
         KeyValueStore keyValueStore = getKvStore();
@@ -79,7 +81,7 @@ public class BulkServiceImpl implements BulkService {
         status.setState(SCHEDULED);
         status.setSubmitTime(Instant.now());
 
-        byte[] statusAsBytes = BulkCodecs.getBulkStatusCodec().encode(status);
+        byte[] statusAsBytes = BulkCodecs.getStatusCodec().encode(status);
 
         keyValueStore.put(commandId + COMMAND, commandAsBytes);
         keyValueStore.put(commandId + STATUS, statusAsBytes);
@@ -97,7 +99,7 @@ public class BulkServiceImpl implements BulkService {
         // retrieve values from KeyValueStore
         KeyValueStore keyValueStore = getKvStore();
         byte[] statusAsBytes = keyValueStore.get(commandId + STATUS);
-        return BulkCodecs.getBulkStatusCodec().decode(statusAsBytes);
+        return BulkCodecs.getStatusCodec().decode(statusAsBytes);
     }
 
     @Override
@@ -105,7 +107,7 @@ public class BulkServiceImpl implements BulkService {
         long deadline = System.currentTimeMillis() + duration.toMillis();
         KeyValueStore kvStore = getKvStore();
         do {
-            if (COMPLETED.equals(BulkCodecs.getBulkStatusCodec().decode(kvStore.get(commandId + STATUS)).getState())) {
+            if (COMPLETED.equals(BulkCodecs.getStatusCodec().decode(kvStore.get(commandId + STATUS)).getState())) {
                 return true;
             }
             Thread.sleep(500);

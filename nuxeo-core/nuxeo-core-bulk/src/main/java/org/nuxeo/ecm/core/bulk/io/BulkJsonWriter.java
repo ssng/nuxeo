@@ -29,7 +29,7 @@ import static org.nuxeo.ecm.core.io.registry.reflect.Priorities.REFERENCE;
 
 import java.io.IOException;
 
-import org.nuxeo.ecm.core.bulk.BulkStatus;
+import org.nuxeo.ecm.core.bulk.message.BulkStatus;
 import org.nuxeo.ecm.core.io.marshallers.json.ExtensibleEntityJsonWriter;
 import org.nuxeo.ecm.core.io.registry.reflect.Setup;
 
