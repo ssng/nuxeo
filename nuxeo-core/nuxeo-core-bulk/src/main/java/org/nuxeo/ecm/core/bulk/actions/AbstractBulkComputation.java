@@ -19,6 +19,7 @@
 package org.nuxeo.ecm.core.bulk.actions;
 
 import static org.nuxeo.ecm.core.bulk.BulkComponent.BULK_KV_STORE_NAME;
+import static org.nuxeo.ecm.core.bulk.BulkProcessor.COUNTER_STREAM;
 import static org.nuxeo.ecm.core.bulk.BulkServiceImpl.COMMAND;
 
 import java.io.Serializable;
@@ -48,6 +49,10 @@ import org.nuxeo.runtime.kv.KeyValueStore;
 import org.nuxeo.runtime.transaction.TransactionHelper;
 
 /**
+ * Base class for bulk action computation.
+ * <p>
+ * Ouptut status sharded by command id.
+ *
  * @since 10.2
  */
 abstract class AbstractBulkComputation extends AbstractComputation {
@@ -133,7 +138,7 @@ abstract class AbstractBulkComputation extends AbstractComputation {
                 }
             });
             BulkCounter counter = new BulkCounter(currentCommandId, documentIds.size());
-            context.produceRecord("o1", currentCommandId, BulkCodecs.getCounterCodec().encode(counter));
+            context.produceRecord(COUNTER_STREAM, currentCommandId, BulkCodecs.getCounterCodec().encode(counter));
             documentIds.clear();
             context.askForCheckpoint();
         }

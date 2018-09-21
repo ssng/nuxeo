@@ -22,6 +22,7 @@ package org.nuxeo.ecm.core.bulk.computation;
 import static java.lang.Integer.max;
 import static java.lang.Math.min;
 import static org.nuxeo.ecm.core.bulk.BulkComponent.BULK_KV_STORE_NAME;
+import static org.nuxeo.ecm.core.bulk.BulkProcessor.STATUS_STREAM;
 import static org.nuxeo.ecm.core.bulk.BulkServiceImpl.STATUS;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.RUNNING;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.SCHEDULED;
@@ -54,8 +55,10 @@ import org.nuxeo.runtime.kv.KeyValueStore;
 import org.nuxeo.runtime.transaction.TransactionHelper;
 
 /**
- * Reads command and execute NXQL to materializes a document set for a command. It outputs the bucket of document ids in
+ * Reads command and execute NXQL to materializes a document set for a command. It outputs buckets of document ids in
  * the action input streams.
+ * <p>
+ * Output buckets evenly on action partitions to ensure parallelism.
  *
  * @since 10.2
  */
@@ -104,7 +107,7 @@ public class BulkScrollerComputation extends AbstractComputation {
                 return;
             }
             currentStatus.setState(SCROLLING_RUNNING);
-            context.produceRecord(BulkProcessor.KVWRITER_ACTION_NAME, commandId,
+            context.produceRecord(STATUS_STREAM, commandId,
                     BulkCodecs.getStatusCodec().encode(currentStatus));
 
             LoginContext loginContext;
@@ -149,7 +152,7 @@ public class BulkScrollerComputation extends AbstractComputation {
                     currentStatus.setScrollEndTime(scrollEndTime);
                     currentStatus.setState(RUNNING);
                     currentStatus.setCount(documentCount);
-                    context.produceRecord(BulkProcessor.KVWRITER_ACTION_NAME, commandId,
+                    context.produceRecord(STATUS_STREAM, commandId,
                             BulkCodecs.getStatusCodec().encode(currentStatus));
 
                 } finally {

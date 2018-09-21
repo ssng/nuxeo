@@ -23,8 +23,8 @@ import static org.nuxeo.ecm.core.bulk.BulkComponent.BULK_KV_STORE_NAME;
 import static org.nuxeo.ecm.core.bulk.BulkComponent.BULK_LOG_MANAGER_NAME;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.COMPLETED;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.SCHEDULED;
-import static org.nuxeo.ecm.core.bulk.BulkProcessor.COUNTER_ACTION_NAME;
-import static org.nuxeo.ecm.core.bulk.BulkProcessor.KVWRITER_ACTION_NAME;
+import static org.nuxeo.ecm.core.bulk.BulkProcessor.COUNTER_STREAM;
+import static org.nuxeo.ecm.core.bulk.BulkProcessor.STATUS_STREAM;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -53,7 +53,7 @@ public class BulkServiceImpl implements BulkService {
 
     private static final Log log = LogFactory.getLog(BulkServiceImpl.class);
 
-    protected static final String DOCUMENTSET_ACTION_NAME = "documentSet";
+    protected static final String COMMAND_STREAM = "command";
 
     public static final String COMMAND = ":command";
 
@@ -88,7 +88,7 @@ public class BulkServiceImpl implements BulkService {
 
         // send it to nuxeo-stream
         LogManager logManager = Framework.getService(StreamService.class).getLogManager(BULK_LOG_MANAGER_NAME);
-        LogAppender<Record> logAppender = logManager.getAppender(DOCUMENTSET_ACTION_NAME);
+        LogAppender<Record> logAppender = logManager.getAppender(COMMAND_STREAM);
         logAppender.append(commandId, Record.of(commandId, commandAsBytes));
 
         return commandId;
@@ -127,10 +127,10 @@ public class BulkServiceImpl implements BulkService {
         BulkAdminService admin = Framework.getService(BulkAdminService.class);
         Collection<String> actions = admin.getActions();
         Collection<String> streams = new ArrayList<>(actions.size() + 3);
-        streams.add(DOCUMENTSET_ACTION_NAME);
+        streams.add(COMMAND_STREAM);
         streams.addAll(actions);
-        streams.add(COUNTER_ACTION_NAME);
-        streams.add(KVWRITER_ACTION_NAME);
+        streams.add(COUNTER_STREAM);
+        streams.add(STATUS_STREAM);
         long deadline = System.currentTimeMillis() + duration.toMillis();
         for (String stream : streams) {
             // when there is no lag between producer and consumer we are done

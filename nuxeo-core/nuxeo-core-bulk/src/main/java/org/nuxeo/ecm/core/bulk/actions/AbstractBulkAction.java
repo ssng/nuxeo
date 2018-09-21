@@ -19,7 +19,7 @@
 
 package org.nuxeo.ecm.core.bulk.actions;
 
-import static org.nuxeo.ecm.core.bulk.BulkProcessor.COUNTER_ACTION_NAME;
+import static org.nuxeo.ecm.core.bulk.BulkProcessor.COUNTER_STREAM;
 
 import java.util.Arrays;
 import java.util.List;
@@ -52,14 +52,13 @@ public abstract class AbstractBulkAction implements StreamProcessorTopology {
     public Topology getTopology(Map<String, String> options) {
         int size = getOptionAsInteger(options, BATCH_SIZE_OPT, DEFAULT_BATCH_SIZE);
         int timer = getOptionAsInteger(options, BATCH_THRESHOLD_MS_OPT, DEFAULT_BATCH_THRESHOLD_MS);
-        return Topology
-                       .builder()
+        return Topology.builder()
                        .addComputation(() -> createComputation(size, timer), getIOs())
                        .build();
     }
 
     protected List<String> getIOs() {
-        return Arrays.asList("i1:" + getActionName(), "o1:" + COUNTER_ACTION_NAME);
+        return Arrays.asList("i1:" + getActionName(), "o1:" + COUNTER_STREAM);
     }
 
     protected String getActionName() {
