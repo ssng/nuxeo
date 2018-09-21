@@ -90,7 +90,7 @@ public class BulkProcessor implements StreamProcessorTopology {
 
         return Topology.builder()
                        .addComputation( //
-                               () -> new BulkScrollerComputation(COMMAND_STREAM, mapping.size(),
+                               () -> new BulkScrollerComputation(COMMAND_STREAM, actions.size() + 1,
                                        scrollBatchSize, scrollKeepAliveSeconds, bucketSize), //
                                mapping)
                        .addComputation(() -> new BulkCounterComputation(COUNTER_STREAM, counterThresholdMs),
