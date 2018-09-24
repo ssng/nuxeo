@@ -29,7 +29,7 @@ object ScnBulkUpdateFolders {
       .feed(folders)
         .feed(Feeders.admins)
         .exec(NuxeoBulk.bulkUpdateDocument("SELECT * from Document WHERE ecm:name = ${name}", "dc:description", "bulk")
-          .asJSON.check(jsonPath("$.commandId").saveAs("commandId")))
+          .asJSON.check(jsonPath("$.id").saveAs("commandId")))
         .exec(NuxeoBulk.waitForAction("${commandId}"))
   }
 

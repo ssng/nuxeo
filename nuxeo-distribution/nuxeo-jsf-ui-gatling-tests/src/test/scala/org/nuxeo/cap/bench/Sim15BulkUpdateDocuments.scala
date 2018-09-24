@@ -28,7 +28,7 @@ object ScnBulkUpdateDocuments {
     scenario("BulkUpdateDocuments")
       .feed(Feeders.admins)
       .exec(NuxeoBulk.bulkUpdateDocument("Select * from Document", "dc:description", "bulk")
-        .asJSON.check(jsonPath("$.commandId").saveAs("commandId")))
+        .asJSON.check(jsonPath("$.id").saveAs("commandId")))
       .exec(NuxeoBulk.waitForAction("${commandId}"))
   }
 
