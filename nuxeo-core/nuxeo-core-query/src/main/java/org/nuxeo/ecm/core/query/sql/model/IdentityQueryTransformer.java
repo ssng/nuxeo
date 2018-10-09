@@ -157,7 +157,7 @@ public class IdentityQueryTransformer implements QueryTransformer {
     }
 
     @Override
-    public Expression transform(MultiExpression node) {
+    public MultiExpression transform(MultiExpression node) {
         List<Operand> list = new ArrayList<>(node.values.size());
         for (Operand o : node.values) {
             list.add(transform(o));

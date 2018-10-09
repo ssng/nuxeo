@@ -491,7 +491,7 @@ public abstract class BaseSession implements Session, EntrySource {
      * @since 10.1
      * @see Session#query(Map, Set, Map, boolean, int, int)
      */
-    protected DocumentModelList applyQueryLimits(DocumentModelList results, int limit, int offset) {
+    public DocumentModelList applyQueryLimits(DocumentModelList results, int limit, int offset) {
         offset = Math.max(0, offset);
         int toIndex = limit >= 1 ? Math.min(results.size(), offset + limit) : results.size();
         DocumentModelListImpl sublist = new DocumentModelListImpl(results.subList(offset, toIndex));

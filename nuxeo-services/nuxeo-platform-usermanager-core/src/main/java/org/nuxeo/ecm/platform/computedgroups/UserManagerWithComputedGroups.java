@@ -31,6 +31,7 @@ import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.ecm.core.api.NuxeoGroup;
 import org.nuxeo.ecm.core.api.NuxeoPrincipal;
+import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.platform.usermanager.NuxeoPrincipalImpl;
 import org.nuxeo.ecm.platform.usermanager.UserManager;
@@ -183,6 +184,20 @@ public class UserManagerWithComputedGroups extends UserManagerImpl {
             }
         }
         return groups;
+    }
+
+    @Override
+    public DocumentModelList searchGroups(QueryBuilder queryBuilder, boolean countTotal) {
+        return searchGroups(queryBuilder, countTotal, null);
+    }
+
+    @Override
+    public DocumentModelList searchGroups(QueryBuilder queryBuilder, boolean countTotal, DocumentModel context) {
+        boolean searchInVirtualGroups = activateComputedGroup();
+        if (!searchInVirtualGroups) {
+            return super.searchGroups(queryBuilder, countTotal, context);
+        }
+        throw new UnsupportedOperationException("Cannot use QueryBuilder with virtual groups");
     }
 
     protected DocumentModel getComputedGroupAsDocumentModel(String grpName) {

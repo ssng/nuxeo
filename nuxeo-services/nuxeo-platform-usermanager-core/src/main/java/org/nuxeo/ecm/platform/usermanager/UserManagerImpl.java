@@ -61,10 +61,16 @@ import org.nuxeo.ecm.core.cache.CacheService;
 import org.nuxeo.ecm.core.event.EventProducer;
 import org.nuxeo.ecm.core.event.impl.DocumentEventContext;
 import org.nuxeo.ecm.core.event.impl.UnboundEventContext;
+import org.nuxeo.ecm.core.query.sql.model.MultiExpression;
+import org.nuxeo.ecm.core.query.sql.model.OrderByList;
+import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
+import org.nuxeo.ecm.directory.AbstractDirectory;
 import org.nuxeo.ecm.directory.BaseSession;
+import org.nuxeo.ecm.directory.Directory;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.Session;
 import org.nuxeo.ecm.directory.api.DirectoryService;
+import org.nuxeo.ecm.directory.memory.MemoryDirectoryExpressionEvaluator;
 import org.nuxeo.ecm.platform.usermanager.exceptions.GroupAlreadyExistsException;
 import org.nuxeo.ecm.platform.usermanager.exceptions.InvalidPasswordException;
 import org.nuxeo.ecm.platform.usermanager.exceptions.UserAlreadyExistsException;
@@ -705,6 +711,21 @@ public class UserManagerImpl implements UserManager, MultiTenantUserManager, Adm
         return true;
     }
 
+    protected boolean isAnonymousMatching(QueryBuilder queryBuilder, Directory dir) {
+        String anonymousUserId = getAnonymousUserId();
+        if (anonymousUserId == null) {
+            return false;
+        }
+        MultiExpression expression = (MultiExpression) queryBuilder.predicate();
+        if (expression.values.isEmpty()) {
+            return true;
+        }
+        @SuppressWarnings({ "rawtypes", "unchecked" })
+        Map<String, Object> entry = (Map) anonymousUser.getProperties();
+        entry.put(userIdField, anonymousUserId);
+        return new MemoryDirectoryExpressionEvaluator(dir).matchesEntry(expression, entry);
+    }
+
     @Override
     public List<NuxeoPrincipal> searchPrincipals(String pattern) {
         DocumentModelList entries = searchUsers(pattern);
@@ -916,6 +937,11 @@ public class UserManagerImpl implements UserManager, MultiTenantUserManager, Adm
     }
 
     @Override
+    public DocumentModelList searchGroups(QueryBuilder queryBuilder, boolean countTotal) {
+        return searchGroups(queryBuilder, countTotal, null);
+    }
+
+    @Override
     public DocumentModelList searchUsers(String pattern) {
         return searchUsers(pattern, null);
     }
@@ -923,6 +949,11 @@ public class UserManagerImpl implements UserManager, MultiTenantUserManager, Adm
     @Override
     public DocumentModelList searchUsers(Map<String, Serializable> filter, Set<String> fulltext) {
         return searchUsers(filter, fulltext, getUserSortMap(), null);
+    }
+
+    @Override
+    public DocumentModelList searchUsers(QueryBuilder queryBuilder, boolean countTotal) {
+        return searchUsers(queryBuilder, countTotal, null);
     }
 
     @Override
@@ -1033,6 +1064,62 @@ public class UserManagerImpl implements UserManager, MultiTenantUserManager, Adm
     }
 
     @Override
+    public DocumentModelList searchUsers(QueryBuilder queryBuilder, boolean countTotal, DocumentModel context) {
+        Directory dir = dirService.getDirectory(userDirectoryName, context);
+        try (Session session = dir.getSession()) {
+            DocumentModelList entries = session.query(queryBuilder, false, countTotal);
+            if (!isAnonymousMatching(queryBuilder, dir)) {
+                return entries;
+            }
+
+            // anonymous is potentially part of the results
+            DocumentModel anonymousEntry = makeVirtualUserEntry(getAnonymousUserId(), anonymousUser);
+            int limit = Math.max(0, (int) queryBuilder.limit());
+            int offset = Math.max(0, (int) queryBuilder.offset());
+            OrderByList orders = queryBuilder.orders();
+            int size = entries.size();
+            long totalSize = entries.totalSize();
+
+            // if we have all the results or less than one page, just add the anonymous user
+            if (offset == 0 && (limit == 0 || size < limit)) {
+                // add anonymous
+                entries.add(anonymousEntry);
+                if (totalSize >= 0) {
+                    ((DocumentModelListImpl) entries).setTotalSize(totalSize + 1);
+                }
+                // re-sort
+                ((AbstractDirectory) dir).orderEntries(entries, AbstractDirectory.makeOrderBy(orders));
+                return entries;
+            }
+
+            // else we have to do a manual paging/sorting...
+            // re-do the full query with limit/offset
+            queryBuilder = new QueryBuilder(queryBuilder).limit(0).offset(0).orders(Collections.emptyList());
+            entries = session.query(queryBuilder, false, countTotal);
+            // add anonymous
+            entries.add(anonymousEntry);
+            // sort
+            if (!orders.isEmpty()) {
+                ((AbstractDirectory) dir).orderEntries(entries, AbstractDirectory.makeOrderBy(orders));
+            }
+            // manual limit/offset
+            entries = ((BaseSession) session).applyQueryLimits(entries, limit, offset);
+            if (!countTotal) { // offset != 0 always here
+                // compat with other directories
+                ((DocumentModelListImpl) entries).setTotalSize(-2);
+            }
+            return entries;
+        }
+    }
+
+    protected static OrderByList copyOrderByList(OrderByList orders) {
+        OrderByList tmp = new OrderByList(null); // stupid constructor
+        tmp.clear();
+        tmp.addAll(orders);
+        return tmp;
+    }
+
+    @Override
     public DocumentModelList searchUsers(Map<String, Serializable> filter, Set<String> fulltext,
             DocumentModel context) {
         throw new UnsupportedOperationException();
@@ -1053,6 +1140,14 @@ public class UserManagerImpl implements UserManager, MultiTenantUserManager, Adm
         try (Session groupDir = dirService.open(groupDirectoryName, context)) {
             removeVirtualFilters(filter);
             return groupDir.query(filter, fulltextClone, getGroupSortMap(), false);
+        }
+    }
+
+    @Override
+    public DocumentModelList searchGroups(QueryBuilder queryBuilder, boolean countTotal, DocumentModel context) {
+        queryBuilder = multiTenantManagement.groupQueryTransformer(this, queryBuilder, context);
+        try (Session groupDir = dirService.open(groupDirectoryName, context)) {
+            return groupDir.query(queryBuilder, false, countTotal);
         }
     }
 

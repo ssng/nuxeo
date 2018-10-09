@@ -35,6 +35,7 @@ import org.nuxeo.ecm.core.schema.types.Field;
 import org.nuxeo.ecm.core.schema.types.Schema;
 import org.nuxeo.ecm.core.schema.types.primitives.BooleanType;
 import org.nuxeo.ecm.core.storage.ExpressionEvaluator;
+import org.nuxeo.ecm.directory.Directory;
 import org.nuxeo.runtime.api.Framework;
 
 /**
@@ -50,13 +51,13 @@ public class MemoryDirectoryExpressionEvaluator extends ExpressionEvaluator {
 
     protected static final Long ONE = Long.valueOf(1);
 
-    protected final MemoryDirectory directory;
+    protected final Directory directory;
 
     protected final Schema schema;
 
     protected Map<String, Object> map;
 
-    public MemoryDirectoryExpressionEvaluator(MemoryDirectory directory) {
+    public MemoryDirectoryExpressionEvaluator(Directory directory) {
         super(null, null, true);
         this.directory = directory;
         this.schema = Framework.getService(SchemaManager.class).getSchema(directory.getSchema());

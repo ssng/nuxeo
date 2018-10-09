@@ -43,6 +43,7 @@ import org.nuxeo.ecm.core.query.sql.model.OrderByExpr;
 import org.nuxeo.ecm.core.query.sql.model.OrderByList;
 import org.nuxeo.ecm.core.query.sql.model.Predicate;
 import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
+import org.nuxeo.ecm.directory.AbstractDirectory;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.BaseSession.FieldDetector;
@@ -270,12 +271,7 @@ public class MemoryDirectorySession extends BaseSession {
         }
         // order entries
         if (!orders.isEmpty()) {
-            Map<String, String> orderBy = new HashMap<>();
-            for (OrderByExpr ob : orders) {
-                String ascOrDesc = ob.isDescending ? "desc" : DocumentModelComparator.ORDER_ASC;
-                orderBy.put(ob.reference.name, ascOrDesc);
-            }
-            getDirectory().orderEntries(results, orderBy);
+            getDirectory().orderEntries(results, AbstractDirectory.makeOrderBy(orders));
         }
         results = applyQueryLimits(results, limit, offset);
         if ((limit != 0 || offset != 0) && !countTotal) {

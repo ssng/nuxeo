@@ -21,6 +21,7 @@ package org.nuxeo.ecm.platform.usermanager;
 import static org.nuxeo.ecm.directory.localconfiguration.DirectoryConfigurationConstants.DIRECTORY_CONFIGURATION_FACET;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +30,19 @@ import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.ecm.core.api.localconfiguration.LocalConfigurationService;
+import org.nuxeo.ecm.core.query.QueryParseException;
+import org.nuxeo.ecm.core.query.sql.model.Expression;
+import org.nuxeo.ecm.core.query.sql.model.IdentityQueryTransformer;
+import org.nuxeo.ecm.core.query.sql.model.Literal;
+import org.nuxeo.ecm.core.query.sql.model.LiteralList;
+import org.nuxeo.ecm.core.query.sql.model.MultiExpression;
+import org.nuxeo.ecm.core.query.sql.model.Operator;
+import org.nuxeo.ecm.core.query.sql.model.Predicate;
+import org.nuxeo.ecm.core.query.sql.model.Predicates;
+import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
+import org.nuxeo.ecm.core.query.sql.model.Reference;
+import org.nuxeo.ecm.core.query.sql.model.StringLiteral;
+import org.nuxeo.ecm.directory.BaseSession.FieldDetector;
 import org.nuxeo.ecm.directory.localconfiguration.DirectoryConfiguration;
 import org.nuxeo.runtime.api.Framework;
 
@@ -81,6 +95,90 @@ public class DefaultUserMultiTenantManagement implements UserMultiTenantManageme
 
         String filterIdValue = (String) filter.get(um.getGroupIdField());
         filter.put(groupId, filterIdValue + groupIdSuffix);
+    }
+
+    @Override
+    public QueryBuilder groupQueryTransformer(UserManager um, QueryBuilder queryBuilder, DocumentModel context) {
+        String groupIdSuffix = getDirectorySuffix(context);
+        if (groupIdSuffix == null) {
+            log.debug("No tenant configuration");
+            return queryBuilder;
+        }
+        queryBuilder = new QueryBuilder(queryBuilder); // copy
+        MultiExpression multiexpr = (MultiExpression) queryBuilder.predicate();
+        String groupIdField = um.getGroupIdField();
+        if (FieldDetector.hasField(multiexpr, groupIdField)) {
+            log.debug("Adding tenant to group matches");
+            QueryTenantAdder qta = new QueryTenantAdder(groupIdField, groupIdSuffix);
+            multiexpr = qta.transform(multiexpr);
+            queryBuilder.predicates((List<Predicate>) (Object) multiexpr.values);
+        }
+        log.debug("Adding tenant filter to predicate");
+        queryBuilder.addAndPredicate(Predicates.like(groupIdField, "%" + groupIdSuffix));
+        return queryBuilder;
+    }
+
+    /**
+     * Changes group equality or difference matches to take into account a suffix.
+     * <p>
+     * Throws for any more complex query on groups.
+     *
+     * @since 10.3
+     */
+    protected static class QueryTenantAdder extends IdentityQueryTransformer {
+
+        protected final String groupIdField;
+
+        protected final String groupIdSuffix;
+
+        public QueryTenantAdder(String groupIdField, String groupIdSuffix) {
+            this.groupIdField = groupIdField;
+            this.groupIdSuffix = groupIdSuffix;
+        }
+
+        @Override
+        public Expression transform(Expression node) {
+            /*
+             * If we have an expression of the form group = 'foo', we turn it into group = 'foo-tenanta'.
+             * Same for group IN ('foo', 'bar') which becomes group IN ('foo-tenanta', 'bar-tenanta').
+             */
+            if (node.lvalue instanceof Reference && ((Reference) node.lvalue).name.equals(groupIdField)) {
+                if (node.operator == Operator.EQ || node.operator == Operator.NOTEQ) {
+                    if (node.rvalue instanceof StringLiteral) {
+                        StringLiteral lit = addSuffix((StringLiteral) node.rvalue);
+                        Expression expr = new Expression(node.lvalue, node.operator, lit);
+                        expr.info = node.info;
+                        return expr;
+                    }
+                } else if (node.operator == Operator.IN || node.operator == Operator.NOTIN) {
+                    if (node.rvalue instanceof LiteralList) {
+                        LiteralList list = new LiteralList();
+                        for (Literal lit : (LiteralList) node.rvalue) {
+                            if (lit instanceof StringLiteral) {
+                                lit = addSuffix((StringLiteral) lit);
+                            }
+                            list.add(transform(lit));
+                        }
+                        Expression expr = new Expression(node.lvalue, node.operator, list);
+                        expr.info = node.info;
+                        return expr;
+                    }
+                }
+            }
+            return super.transform(node);
+        }
+
+        protected StringLiteral addSuffix(StringLiteral lit) {
+            return new StringLiteral(lit.value + groupIdSuffix);
+        }
+
+        @Override
+        public Reference transform(Reference node) {
+            if (node.name.equals(groupIdField)) {
+                throw new QueryParseException("Cannot evaluate " + node + " in multi-tenant mode");
+            }
+            return node;
+        }
     }
 
     @Override

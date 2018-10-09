@@ -30,6 +30,7 @@ import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.NuxeoPrincipal;
 import org.nuxeo.ecm.core.api.security.ACP;
+import org.nuxeo.ecm.core.query.sql.model.QueryBuilder;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.platform.usermanager.exceptions.GroupAlreadyExistsException;
 import org.nuxeo.ecm.platform.usermanager.exceptions.UserAlreadyExistsException;
@@ -56,6 +57,18 @@ public interface MultiTenantUserManager extends Serializable {
      * @since 5.5
      */
     DocumentModelList searchGroups(String pattern, DocumentModel context);
+
+    /**
+     * Returns groups matching the given query, within the given context.
+     *
+     * @param queryBuilder the query to use, including limit, offset and ordering
+     * @param countTotal if {@code true}, return a {@link DocumentModelList} that includes a total size of the
+     *            underlying list (the size if there was no limit or offset), otherwise does a best effort but may
+     *            return {@code -2} when unknown
+     * @param context the context for the tenant, or {@code null}
+     * @since 10.3
+     */
+    DocumentModelList searchGroups(QueryBuilder queryBuilder, boolean countTotal, DocumentModel context);
 
     /**
      * Returns the list of all user ids into the given context document. The context document must be contained into the
@@ -118,6 +131,18 @@ public interface MultiTenantUserManager extends Serializable {
      * @since 5.5
      */
     DocumentModelList searchUsers(String pattern, DocumentModel context);
+
+    /**
+     * Returns users matching the given query, within the given context.
+     *
+     * @param queryBuilder the query to use, including limit, offset and ordering
+     * @param countTotal if {@code true}, return a {@link DocumentModelList} that includes a total size of the
+     *            underlying list (the size if there was no limit or offset), otherwise does a best effort but may
+     *            return {@code -2} when unknown
+     * @param context the context for the tenant, or {@code null}
+     * @since 10.3
+     */
+    DocumentModelList searchUsers(QueryBuilder queryBuilder, boolean countTotal, DocumentModel context);
 
     /**
      * Returns users matching given criteria and with the given context. if the Document Context have a directory local

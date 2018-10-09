@@ -57,6 +57,15 @@ public class QueryBuilder {
         orders.clear();
     }
 
+    /** Copy constructor. */
+    public QueryBuilder(QueryBuilder other) {
+        this();
+        filter.values.addAll(other.filter.values);
+        orders.addAll(other.orders);
+        offset = other.offset;
+        limit = other.limit;
+    }
+
     public Predicate predicate() {
         return filter;
     }

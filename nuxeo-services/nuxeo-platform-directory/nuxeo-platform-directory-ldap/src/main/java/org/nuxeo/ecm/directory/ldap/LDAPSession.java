@@ -73,6 +73,7 @@ import org.nuxeo.ecm.core.schema.types.Field;
 import org.nuxeo.ecm.core.schema.types.SimpleTypeImpl;
 import org.nuxeo.ecm.core.schema.types.Type;
 import org.nuxeo.ecm.core.utils.SIDGenerator;
+import org.nuxeo.ecm.directory.AbstractDirectory;
 import org.nuxeo.ecm.directory.BaseSession;
 import org.nuxeo.ecm.directory.DirectoryException;
 import org.nuxeo.ecm.directory.DirectoryFieldMapper;
@@ -569,13 +570,8 @@ public class LDAPSession extends BaseSession {
         int limit = Math.max(0, (int) queryBuilder.limit());
         int offset = Math.max(0, (int) queryBuilder.offset());
         // TODO orderby using SortControl
-        Map<String, String> orderBy = new HashMap<>();
         OrderByList orders = queryBuilder.orders();
-        for (OrderByExpr ob : orders) {
-            String ascOrDesc = ob.isDescending ? "desc" : DocumentModelComparator.ORDER_ASC;
-            orderBy.put(ob.reference.name, ascOrDesc);
-        }
-
+        Map<String, String> orderBy = AbstractDirectory.makeOrderBy(orders);
         SearchControls scts = getDirectory().getSearchControls(true);
 
         if (log.isDebugEnabled()) {

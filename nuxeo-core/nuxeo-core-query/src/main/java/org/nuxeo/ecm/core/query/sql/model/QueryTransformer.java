@@ -55,7 +55,7 @@ public interface QueryTransformer {
 
     Expression transform(Expression node);
 
-    Expression transform(MultiExpression node);
+    MultiExpression transform(MultiExpression node);
 
     Operator transform(Operator node);
 
