@@ -221,7 +221,6 @@ public class TagsRelationsToFacetsMigrator implements Migrator {
                 // ignore null docId
                 return;
             }
-            IdRef idRef = new IdRef(docId);
             doc = session.getDocument(new IdRef(docId));
         } catch (DocumentNotFoundException | IllegalArgumentException e) {
             if (e instanceof IllegalArgumentException) {
