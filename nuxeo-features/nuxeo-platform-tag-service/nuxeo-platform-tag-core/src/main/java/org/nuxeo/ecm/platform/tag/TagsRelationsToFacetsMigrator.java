@@ -216,8 +216,17 @@ public class TagsRelationsToFacetsMigrator implements Migrator {
     protected void addTags(CoreSession session, String docId, Set<Tag> tags) {
         DocumentModel doc;
         try {
+            if (docId == null || docId.equals("")) {
+                log.warn("TagsRelationsToFacetsMigrator : docId found null in addTags");
+                // ignore null docId
+                return;
+            }
+            IdRef idRef = new IdRef(docId);
             doc = session.getDocument(new IdRef(docId));
-        } catch (DocumentNotFoundException e) {
+        } catch (DocumentNotFoundException | IllegalArgumentException e) {
+            if (e instanceof IllegalArgumentException) {
+                log.warn("TagsRelationsToFacetsMigrator : Ignoring document leading to Illegal Argument and reference docId=" + docId + " " + e);
+            }
             // ignore document that was already removed, or whose type is unknown
             return;
         }
