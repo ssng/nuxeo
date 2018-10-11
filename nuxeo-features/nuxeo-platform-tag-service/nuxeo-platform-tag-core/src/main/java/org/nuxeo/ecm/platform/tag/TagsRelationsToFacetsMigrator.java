@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.api.CoreInstance;
@@ -216,7 +217,7 @@ public class TagsRelationsToFacetsMigrator implements Migrator {
     protected void addTags(CoreSession session, String docId, Set<Tag> tags) {
         DocumentModel doc;
         try {
-            if (docId == null || docId.equals("")) {
+            if (StringUtils.isEmpty(docId)) {
                 log.warn("TagsRelationsToFacetsMigrator : docId found null in addTags");
                 // ignore null docId
                 return;
@@ -224,7 +225,7 @@ public class TagsRelationsToFacetsMigrator implements Migrator {
             doc = session.getDocument(new IdRef(docId));
         } catch (DocumentNotFoundException | IllegalArgumentException e) {
             if (e instanceof IllegalArgumentException) {
-                log.warn("TagsRelationsToFacetsMigrator : Ignoring document leading to Illegal Argument and reference docId=" + docId + " " + e);
+                log.warn("TagsRelationsToFacetsMigrator : Ignoring document leading to Illegal Argument and reference docId=" + docId, e);
             }
             // ignore document that was already removed, or whose type is unknown
             return;
