@@ -16,10 +16,13 @@
  */
 package org.nuxeo.ecm.core.bulk;
 
+import java.security.Principal;
+
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
-import org.nuxeo.runtime.api.Framework;
+import org.nuxeo.ecm.core.api.impl.UserPrincipal;
+import org.nuxeo.ecm.core.api.local.ClientLoginModule;
 import org.nuxeo.runtime.api.login.LoginAs;
 
 /**
@@ -29,6 +32,13 @@ public class DummyLoginAs implements LoginAs {
 
     @Override
     public LoginContext loginAs(String username) throws LoginException {
-        return Framework.login(username, username);
+        Principal principal = new UserPrincipal(username, null, false, false);
+        ClientLoginModule.getThreadLocalLogin().push(principal, null, null);
+        return new LoginContext("nuxeo-client-login") {
+            @Override
+            public void logout() throws LoginException {
+                ClientLoginModule.getThreadLocalLogin().pop();
+            }
+        };
     }
 };

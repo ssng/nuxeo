@@ -54,13 +54,22 @@ public class TestSetPropertiesAction {
     public BulkService service;
 
     @Inject
-    public CoreSession session;
-
-    @Inject
     public TransactionalFeature txFeature;
 
+    @Inject
+    public CoreSession session;
+
     @Test
-    public void testSetProperties() throws Exception {
+    public void testSetPropertiesAsAdmin() throws Exception {
+        testSetProperties("Administrator");
+    }
+
+    @Test
+    public void testSetPropertiesAsNonAdmin() throws Exception {
+        testSetProperties("Tutu");
+    }
+
+    protected void testSetProperties(String username) throws Exception {
 
         DocumentModel model = session.getDocument(new PathRef("/default-domain/workspaces/test"));
         String nxql = String.format("SELECT * from Document where ecm:parentId='%s'", model.getId());
@@ -76,20 +85,20 @@ public class TestSetPropertiesAction {
 
         String commandId = service.submit(
                 new BulkCommand.Builder("setProperties", nxql).repository(session.getRepositoryName())
-                                                              .user(session.getPrincipal().getName())
+                                                              .user(username)
                                                               .param("dc:title", title)
                                                               .param("dc:description", description)
                                                               .param("cpx:complex", complex)
                                                               .build());
 
-        assertTrue("Bulk action didn't finish", service.await(Duration.ofSeconds(10)));
+        assertTrue("Bulk action didn't finish", service.await(Duration.ofSeconds(1000)));
 
         BulkStatus status = service.getStatus(commandId);
         assertNotNull(status);
         assertEquals(COMPLETED, status.getState());
         assertEquals(10, status.getProcessed());
 
-        List<BulkStatus> statuses = service.getStatuses(session.getPrincipal().getName());
+        List<BulkStatus> statuses = service.getStatuses(username);
         assertEquals(1, statuses.size());
         assertEquals(status.getCommandId(), statuses.get(0).getCommandId());
 
