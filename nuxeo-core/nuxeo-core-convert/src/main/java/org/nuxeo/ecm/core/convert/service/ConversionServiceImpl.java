@@ -33,6 +33,8 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.activation.MimeType;
+import javax.activation.MimeTypeParseException;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FilenameUtils;
@@ -68,6 +70,7 @@ import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.model.ComponentContext;
 import org.nuxeo.runtime.model.ComponentInstance;
 import org.nuxeo.runtime.model.DefaultComponent;
+import org.nuxeo.runtime.services.config.ConfigurationService;
 
 /**
  * Runtime Component that also provides the POJO implementation of the {@link ConversionService}.
@@ -79,6 +82,16 @@ public class ConversionServiceImpl extends DefaultComponent implements Conversio
     public static final String CONVERTER_EP = "converter";
 
     public static final String CONFIG_EP = "configuration";
+
+    /**
+     * @since 10.3
+     */
+    public static final String ENFORCE_SOURCE_MIME_TYPE_CHECK = "nuxeo.convert.enforceSourceMimeType";
+
+    /**
+     * @since 10.3
+     */
+    public static final String ANY_MIME_TYPE = "*";
 
     protected final Map<String, ConverterDescriptor> converterDescriptors = new HashMap<>();
 
@@ -310,6 +323,9 @@ public class ConversionServiceImpl extends DefaultComponent implements Conversio
             throw new ConversionException("Converter " + converterName + " can not be found");
         }
 
+        // make sure the converter can handle the blob mime type
+        checkSourceMimeType(desc, blobHolder.getBlob());
+
         String cacheKey = CacheKeyGenerator.computeKey(converterName, blobHolder, parameters);
 
         BlobHolder result = ConversionCacheHolder.getFromCache(cacheKey);
@@ -332,6 +348,34 @@ public class ConversionServiceImpl extends DefaultComponent implements Conversio
         }
 
         return result;
+    }
+
+    /**
+     * Checks if the converter supports the blob's mime type as source mime type.
+     *
+     * @since 10.3
+     * @throws ConversionException if the converter does not support the blob's mime type
+     */
+    protected void checkSourceMimeType(ConverterDescriptor desc, Blob blob) {
+        if (!Framework.getService(ConfigurationService.class).isBooleanPropertyTrue(ENFORCE_SOURCE_MIME_TYPE_CHECK)) {
+            return;
+        }
+
+        List<String> sourceMimeTypes = desc.getSourceMimeTypes();
+        if (sourceMimeTypes.contains(ANY_MIME_TYPE)) {
+            return;
+        }
+
+        String mimeType = blob.getMimeType();
+        try {
+            String srcMimeType = new MimeType(mimeType).getBaseType();
+            if (!sourceMimeTypes.contains(srcMimeType)) {
+                throw new ConversionException(
+                        String.format("%s mime type not supported by %s converter", srcMimeType, desc.getConverterName()));
+            }
+        } catch (MimeTypeParseException e) {
+            throw new ConversionException(String.format("Unknown mime type %s", mimeType));
+        }
     }
 
     protected void updateResultBlobMimeType(BlobHolder resultBh, ConverterDescriptor desc) {

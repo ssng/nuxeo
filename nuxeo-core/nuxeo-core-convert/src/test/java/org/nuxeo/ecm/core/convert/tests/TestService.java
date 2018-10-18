@@ -205,7 +205,7 @@ public class TestService {
         assertTrue(result.isAvailable());
         assertNull(result.getErrorMessage());
         assertNull(result.getInstallationMessage());
-        assertEquals(2, result.getSupportedInputMimeTypes().size());
+        assertEquals(3, result.getSupportedInputMimeTypes().size());
 
         notRegistred = false;
         try {

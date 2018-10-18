@@ -45,8 +45,21 @@
     </converter>
 
     <converter name="msoffice2text" class="org.nuxeo.ecm.core.convert.plugins.text.extractors.MSOffice2TextConverter">
-      <sourceMimeType>application/msword</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-excel</sourceMimeType>
+      <sourceMimeType>application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</sourceMimeType>
+      <sourceMimeType>application/vnd.openxmlformats-officedocument.spreadsheetml.template</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-excel.sheet.macroEnabled.12</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-excel.template.macroEnabled.12</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-excel.addin.macroEnabled.12</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-excel.sheet.binary.macroEnabled.12</sourceMimeType>
       <sourceMimeType>application/vnd.ms-powerpoint</sourceMimeType>
+      <sourceMimeType>application/vnd.openxmlformats-officedocument.presentationml.presentation</sourceMimeType>
+      <sourceMimeType>application/vnd.openxmlformats-officedocument.presentationml.template</sourceMimeType>
+      <sourceMimeType>application/vnd.openxmlformats-officedocument.presentationml.slideshow</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-powerpoint.addin.macroEnabled.12</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-powerpoint.presentation.macroEnabled.12</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-powerpoint.template.macroEnabled.12</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-powerpoint.slideshow.macroEnabled.12</sourceMimeType>
       <destinationMimeType>text/plain</destinationMimeType>
     </converter>
 
@@ -57,9 +70,11 @@
     </converter>
 
     <converter name="docx2text" class="org.nuxeo.ecm.core.convert.plugins.text.extractors.DOCX2TextConverter">
-      <sourceMimeType>
-        application/vnd.openxmlformats-officedocument.wordprocessingml.document
-      </sourceMimeType>
+      <sourceMimeType>application/msword</sourceMimeType>
+      <sourceMimeType>application/vnd.openxmlformats-officedocument.wordprocessingml.document</sourceMimeType>
+      <sourceMimeType>application/vnd.openxmlformats-officedocument.wordprocessingml.template</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-word.document.macroEnabled.12</sourceMimeType>
+      <sourceMimeType>application/vnd.ms-word.template.macroEnabled.12</sourceMimeType>
       <destinationMimeType>text/plain</destinationMimeType>
     </converter>
 

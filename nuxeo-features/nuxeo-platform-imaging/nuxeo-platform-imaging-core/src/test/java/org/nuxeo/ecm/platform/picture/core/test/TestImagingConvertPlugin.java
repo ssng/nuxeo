@@ -30,6 +30,7 @@ import static org.nuxeo.ecm.platform.picture.api.ImagingConvertConstants.OPTION_
 import static org.nuxeo.ecm.platform.picture.api.ImagingConvertConstants.OPTION_ROTATE_ANGLE;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -56,6 +57,8 @@ import org.nuxeo.ecm.core.api.blobholder.SimpleBlobHolder;
 import org.nuxeo.ecm.core.convert.api.ConversionService;
 import org.nuxeo.ecm.core.test.annotations.Granularity;
 import org.nuxeo.ecm.core.test.annotations.RepositoryConfig;
+import org.nuxeo.ecm.platform.mimetype.interfaces.MimetypeRegistry;
+import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.runner.Deploy;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
@@ -176,7 +179,11 @@ public class TestImagingConvertPlugin {
     }
 
     protected BlobHolder getBlobHolder(String path) throws IOException {
-        Blob blob = Blobs.createBlob(ImagingResourcesHelper.getFileFromPath(path));
+        File file = ImagingResourcesHelper.getFileFromPath(path);
+        Blob blob = Blobs.createBlob(file);
+        MimetypeRegistry mimetypeRegistry = Framework.getService(MimetypeRegistry.class);
+        String mimeType = mimetypeRegistry.getMimetypeFromFilenameAndBlobWithDefault(file.getName(), blob, null);
+        blob.setMimeType(mimeType);
         return new SimpleBlobHolder(blob);
     }
 
