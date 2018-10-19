@@ -29,12 +29,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModelList;
 import org.nuxeo.ecm.core.api.DocumentRef;
 import org.nuxeo.ecm.core.api.IdRef;
 import org.nuxeo.ecm.core.bulk.BulkCodecs;
 import org.nuxeo.ecm.core.bulk.action.CSVExportAction;
+import org.nuxeo.ecm.core.bulk.action.SetPropertiesAction;
 import org.nuxeo.ecm.core.bulk.message.DataBucket;
 import org.nuxeo.ecm.core.io.registry.MarshallerRegistry;
 import org.nuxeo.ecm.core.io.registry.Writer;
@@ -53,6 +56,8 @@ import org.nuxeo.runtime.api.Framework;
  * @since 10.3
  */
 public class CSVProjection extends AbstractBulkComputation {
+
+    private static final Logger log = LogManager.getLogger(CSVProjection.class);
 
     public static final String SCHEMAS_PARAM = "schemas";
 
@@ -85,7 +90,7 @@ public class CSVProjection extends AbstractBulkComputation {
         try {
             writer.write(docs, DocumentModelList.class, null, TEXT_CSV_TYPE, out);
         } catch (IOException e) {
-            getLog().error(e, e);
+            log.error("Unable to write documents", e);
         }
     }
 

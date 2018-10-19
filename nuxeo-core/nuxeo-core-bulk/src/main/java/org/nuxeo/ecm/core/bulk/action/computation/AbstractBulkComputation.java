@@ -25,8 +25,8 @@ import java.util.Map;
 import javax.security.auth.login.LoginContext;
 import javax.security.auth.login.LoginException;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.nuxeo.ecm.core.api.CloseableCoreSession;
 import org.nuxeo.ecm.core.api.CoreInstance;
 import org.nuxeo.ecm.core.api.CoreSession;
@@ -60,6 +60,8 @@ import com.google.common.collect.Lists;
  */
 public abstract class AbstractBulkComputation extends AbstractComputation {
 
+    private static final Logger log = LogManager.getLogger(AbstractBulkComputation.class);
+
     protected BulkCommand command;
 
     public AbstractBulkComputation(String name) {
@@ -76,8 +78,8 @@ public abstract class AbstractBulkComputation extends AbstractComputation {
         command = getCommand(bucket.getCommandId());
         if (command == null) {
             // this requires a manual intervention, the kv store might have been lost
-            getLog().error(String.format("Stopping processing, unknown command: %s, offset: %s, record: %s.",
-                    bucket.getCommandId(), context.getLastOffset(), record));
+            log.error("[{}] Stopping processing, unknown command: {}, offset: {}, record: {}.", metadata.name(),
+                    bucket.getCommandId(), context.getLastOffset(), record);
             context.askForTermination();
             return;
         }
@@ -143,10 +145,6 @@ public abstract class AbstractBulkComputation extends AbstractComputation {
             delta.setResult(result);
         }
         context.produceRecord(OUTPUT_1, commandId, BulkCodecs.getStatusCodec().encode(delta));
-    }
-
-    protected Log getLog() {
-        return LogFactory.getLog(getClass());
     }
 
     protected abstract void compute(CoreSession session, List<String> ids, Map<String, Serializable> properties);

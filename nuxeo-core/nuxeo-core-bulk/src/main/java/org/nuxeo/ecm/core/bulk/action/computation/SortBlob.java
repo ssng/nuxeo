@@ -21,6 +21,8 @@ package org.nuxeo.ecm.core.bulk.action.computation;
 import java.io.IOException;
 import java.nio.file.Path;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.nuxeo.ecm.core.api.Blob;
 import org.nuxeo.ecm.core.api.impl.blob.FileBlob;
 import org.nuxeo.ecm.core.bulk.BulkCodecs;
@@ -35,6 +37,8 @@ import com.google.code.externalsorting.ExternalSort;
  * @since 10.3
  */
 public class SortBlob extends AbstractTransientBlobComputation {
+
+    private static final Logger log = LogManager.getLogger(SortBlob.class);
 
     public static final String NAME = "sortBlob";
 
@@ -63,7 +67,7 @@ public class SortBlob extends AbstractTransientBlobComputation {
             ExternalSort.sort(blob.getFile(), temp.toFile());
             return new FileBlob(temp.toFile());
         } catch (IOException e) {
-            getLog().error(e, e);
+            log.error("Unable to sort blob", e);
             return blob;
         }
     }
