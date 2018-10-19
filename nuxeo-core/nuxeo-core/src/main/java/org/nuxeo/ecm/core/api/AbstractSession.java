@@ -744,7 +744,7 @@ public abstract class AbstractSession implements CoreSession, Serializable {
 
     private LifeCycleService getLifeCycleService() {
         if (lifeCycleService == null) {
-            lifeCycleService = NXCore.getLifeCycleService();
+            lifeCycleService = Framework.getService(LifeCycleService.class);
         }
         return lifeCycleService;
     }
