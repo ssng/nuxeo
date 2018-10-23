@@ -74,18 +74,29 @@ public abstract class AbstractBulkComputation extends AbstractComputation {
     public void processRecord(ComputationContext context, String inputStreamName, Record record) {
         BulkBucket bucket = BulkCodecs.getBucketCodec().decode(record.getData());
         command = getCommand(bucket.getCommandId());
-        if (command == null) {
-            // this requires a manual intervention, the kv store might have been lost
-            getLog().error(String.format("Stopping processing, unknown command: %s, offset: %s, record: %s.",
-                    bucket.getCommandId(), context.getLastOffset(), record));
-            context.askForTermination();
-            return;
+        if (command != null) {
+            for (List<String> batch : Lists.partition(bucket.getIds(), command.getBatchSize())) {
+                processBatchOfDocuments(batch);
+            }
+            endBucket(context, bucket.getIds().size());
+            context.askForCheckpoint();
+        } else {
+            if (isAbortedCommand(bucket.getCommandId())) {
+                getLog().debug("Skipping aborted command: " + bucket.getCommandId());
+                context.askForCheckpoint();
+            } else {
+                // this requires a manual intervention, the kv store might have been lost
+                getLog().error(String.format("Stopping processing, unknown command: %s, offset: %s, record: %s.",
+                        bucket.getCommandId(), context.getLastOffset(), record));
+                context.askForTermination();
+            }
         }
-        for (List<String> batch : Lists.partition(bucket.getIds(), command.getBatchSize())) {
-            processBatchOfDocuments(batch);
-        }
-        endBucket(context, bucket.getIds().size());
-        context.askForCheckpoint();
+    }
+
+    protected boolean isAbortedCommand(String commandId) {
+        BulkService bulkService = Framework.getService(BulkService.class);
+        BulkStatus status = bulkService.getStatus(commandId);
+        return BulkStatus.State.ABORTED.equals(status.getState());
     }
 
     protected BulkCommand getCommand(String commandId) {

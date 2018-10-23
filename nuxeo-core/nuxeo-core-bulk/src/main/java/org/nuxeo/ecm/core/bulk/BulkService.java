@@ -52,6 +52,14 @@ public interface BulkService {
     BulkCommand getCommand(String commandId);
 
     /**
+     * Aborts a scheduled or running command. All computations related to this command will be skipped. Returns the
+     * updated status of the command.
+     *
+     * @since 10.3
+     */
+    BulkStatus abort(String commandId);
+
+    /**
      * Waits for completion of given bulk command.
      *
      * @param commandId the command to wait

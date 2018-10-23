@@ -21,6 +21,7 @@ package org.nuxeo.ecm.core.bulk;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.ABORTED;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.COMPLETED;
 
 import java.io.Serializable;
@@ -153,4 +154,31 @@ public class TestSetPropertiesAction {
         doc.refresh();
         assertEquals("test foo", doc.getPropertyValue("cpx:complex/foo"));
     }
+
+    @Test
+    public void testAbort() throws Exception {
+        DocumentModel model = session.getDocument(new PathRef("/default-domain/workspaces/test"));
+        String nxql = String.format("SELECT * from Document where ecm:parentId='%s'", model.getId());
+        BulkCommand command = new BulkCommand.Builder(SetPropertiesAction.ACTION_NAME, nxql).repository(session.getRepositoryName())
+                .user(session.getPrincipal().getName())
+                .param("dc:description", "foo")
+                .bucket(1).batch(1)
+                .build();
+        String commandId = service.submit(command);
+        BulkStatus abortStatus = service.abort(commandId);
+        if (abortStatus.getState().equals(COMPLETED)) {
+            System.out.println("Bulk command cannot be aborted because already completed");
+            return;
+        }
+        assertEquals(ABORTED, abortStatus.getState());
+
+        BulkStatus status = service.getStatus(commandId);
+        assertEquals(ABORTED, status.getState());
+
+        assertTrue("Bulk action didn't finish", service.await(Duration.ofSeconds(10)));
+
+        status = service.getStatus(commandId);
+        assertEquals(ABORTED, status.getState());
+    }
+
 }

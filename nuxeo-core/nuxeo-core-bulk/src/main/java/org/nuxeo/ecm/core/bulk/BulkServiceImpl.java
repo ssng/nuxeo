@@ -19,6 +19,7 @@
 package org.nuxeo.ecm.core.bulk;
 
 import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.ABORTED;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.COMPLETED;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.SCHEDULED;
 import static org.nuxeo.ecm.core.bulk.message.BulkStatus.State.UNKNOWN;
@@ -72,6 +73,9 @@ public class BulkServiceImpl implements BulkService {
 
     // How long we keep the command and its status in the kv store once completed
     public static final long COMPLETED_TTL_SECONDS = 3_600;
+
+    // How long we keep the command and its status in the kv store once aborted
+    public static final long ABORTED_TTL_SECONDS = 7_200;
 
     @Override
     public String submit(BulkCommand command) {
@@ -135,10 +139,15 @@ public class BulkServiceImpl implements BulkService {
     public byte[] setStatus(BulkStatus status) {
         KeyValueStore kvStore = getKvStore();
         byte[] statusAsBytes = BulkCodecs.getStatusCodec().encode(status);
-        if (COMPLETED.equals(status.getState())) {
-            kvStore.put(status.getCommandId() + STATUS_SUFFIX, statusAsBytes, COMPLETED_TTL_SECONDS);
-            kvStore.setTTL(status.getCommandId() + COMMAND_SUFFIX, COMPLETED_TTL_SECONDS);
-        } else {
+        long ttl = COMPLETED_TTL_SECONDS;
+        switch (status.getState()) {
+        case ABORTED:
+            ttl = ABORTED_TTL_SECONDS;
+        case COMPLETED:
+            kvStore.put(status.getCommandId() + STATUS_SUFFIX, statusAsBytes, ttl);
+            kvStore.setTTL(status.getCommandId() + COMMAND_SUFFIX, ttl);
+            break;
+        default:
             kvStore.put(status.getCommandId() + STATUS_SUFFIX, statusAsBytes);
         }
         return statusAsBytes;
@@ -152,6 +161,27 @@ public class BulkServiceImpl implements BulkService {
             return null;
         }
         return BulkCodecs.getCommandCodec().decode(statusAsBytes);
+    }
+
+    @Override
+    public BulkStatus abort(String commandId) {
+        BulkStatus status = getStatus(commandId);
+        if (COMPLETED.equals(status.getState())) {
+            // too late
+            return status;
+        }
+        status.setState(ABORTED);
+        // set the status in the KV store
+        setStatus(status);
+        // Send a delta to the status computation
+        BulkStatus delta = BulkStatus.deltaOf(commandId);
+        delta.setCompletedTime(Instant.now());
+        delta.setState(ABORTED);
+        byte[] statusAsBytes = BulkCodecs.getStatusCodec().encode(delta);
+        LogManager logManager = Framework.getService(StreamService.class).getLogManager(BULK_LOG_MANAGER_NAME);
+        LogAppender<Record> logAppender = logManager.getAppender(STATUS_STREAM);
+        logAppender.append(commandId, Record.of(commandId, statusAsBytes));
+        return status;
     }
 
     /**
@@ -170,9 +200,11 @@ public class BulkServiceImpl implements BulkService {
         BulkStatus status;
         do {
             status = getStatus(commandId);
-            if (COMPLETED.equals(status.getState())) {
+            switch (status.getState()) {
+            case COMPLETED:
+            case ABORTED:
                 return true;
-            } else if (UNKNOWN.equals(status.getState())) {
+            case UNKNOWN:
                 log.error("Unknown status for command: " + commandId);
                 return false;
             }
@@ -196,8 +228,12 @@ public class BulkServiceImpl implements BulkService {
         // nanoTime is always monotonous
         long deadline = System.nanoTime() + duration.toNanos();
         for (String commandId : commandIds) {
-            while (getStatus(commandId).getState() != COMPLETED) {
-                Thread.sleep(100);
+            for (;;) {
+                BulkStatus.State state = getStatus(commandId).getState();
+                if (state == COMPLETED || state == ABORTED || state == UNKNOWN) {
+                    break;
+                }
+                Thread.sleep(200);
                 if (deadline < System.nanoTime()) {
                     return false;
                 }
