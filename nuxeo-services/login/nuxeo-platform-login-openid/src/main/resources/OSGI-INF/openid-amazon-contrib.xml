@@ -8,13 +8,19 @@
             <name>Amazon</name>
             <label>Amazon</label>
             <description>Login using your Amazon account</description>
-            <authorizationServerURL>https://amazon.com/ap/oa</authorizationServerURL>
-            <tokenServerURL>https://api.amazon.com/auth/o2/token</tokenServerURL>
-            <userInfoURL>https://api.amazon.com/user/profile</userInfoURL>
+            <authorizationServerURL>https://fmwtenant.auth.us-east-1.amazoncognito.com/oauth2/authorize</authorizationServerURL>
+            <tokenServerURL>https://fmwtenant.auth.us-east-1.amazoncognito.com/oauth2/token</tokenServerURL>
+            <userInfoURL>https://fmwtenant.auth.us-east-1.amazoncognito.com/oauth2/userInfo</userInfoURL>
+            <!--
+            <authorizationServerURL>https://nuxeoscopetest.auth.us-east-1.amazoncognito.com/oauth2/authorize</authorizationServerURL>
+            <tokenServerURL>https://nuxeoscopetest.auth.us-east-1.amazoncognito.com/oauth2/token</tokenServerURL>
+            <userInfoURL>https://nuxeoscopetest.auth.us-east-1.amazoncognito.com/oauth2/userInfo</userInfoURL>
+            -->
             <userInfoClass>org.nuxeo.ecm.platform.oauth2.openid.auth.DefaultOpenIDUserInfo</userInfoClass>
             <scope>profile</scope>
             <icon>/img/amazon_icon.png</icon>
             <userMapperName>amazon_mapper</userMapperName>
+            <userResolverClass>org.nuxeo.ecm.platform.oauth2.openid.auth.EmailBasedUserResolver</userResolverClass>
         </provider>
     </extension>
 

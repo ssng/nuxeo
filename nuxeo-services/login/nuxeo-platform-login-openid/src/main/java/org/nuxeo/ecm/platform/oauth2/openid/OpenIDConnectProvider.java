@@ -215,6 +215,9 @@ public class OpenIDConnectProvider implements LoginProviderLinkComputer {
 
         try {
             HttpRequest request = requestFactory.buildGetRequest(url);
+            /* SSH Cognito needs access token to be HTTP headers */
+            request.getHeaders().setAuthorization("Bearer " + accessToken);
+            /* SSH end */
             HttpResponse response = request.execute();
             String body = IOUtils.toString(response.getContent(), "UTF-8");
             log.debug(body);

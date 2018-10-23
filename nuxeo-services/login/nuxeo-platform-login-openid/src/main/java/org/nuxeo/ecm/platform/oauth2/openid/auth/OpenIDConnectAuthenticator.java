@@ -38,6 +38,19 @@ import org.nuxeo.ecm.platform.oauth2.openid.OpenIDConnectProviderRegistry;
 import org.nuxeo.ecm.platform.ui.web.auth.interfaces.NuxeoAuthenticationPlugin;
 import org.nuxeo.runtime.api.Framework;
 
+// SSH JWT local validation
+import com.nimbusds.jose.*;
+import com.nimbusds.jose.jwk.source.*;
+import com.nimbusds.jwt.*;
+import com.nimbusds.jwt.proc.*;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.ParseException;
+
+import com.nimbusds.jose.proc.*;
+
 /**
  * Authenticator using OpenID to retrieve user identity.
  *
@@ -53,6 +66,8 @@ public class OpenIDConnectAuthenticator implements NuxeoAuthenticationPlugin {
 
     public static final String CODE_URL_PARAM_NAME = "code";
 
+    public static final String TOKEN_URL_PARAM_NAME = "token";	// SSH
+
     public static final String ERROR_URL_PARAM_NAME = "error";
 
     public static final String PROVIDER_URL_PARAM_NAME = "provider";
@@ -60,6 +75,8 @@ public class OpenIDConnectAuthenticator implements NuxeoAuthenticationPlugin {
     public static final String USERINFO_KEY = "OPENID_USERINFO";
 
     public static final String PROPERTY_OAUTH_CREATE_USER = "nuxeo.oauth.auth.create.user";
+
+    public static final String PROPERTY_OAUTH_JWKSET_URL = "nuxeo.oauth.auth.jwkset.url";	// SSH
 
     public static final String PROPERTY_SKIP_OAUTH_TOKEN = "nuxeo.skip.oauth.token.state.check";
 
@@ -78,11 +95,18 @@ public class OpenIDConnectAuthenticator implements NuxeoAuthenticationPlugin {
             return null;
         }
 
+        // SSH get token parameter
+        // Getting the "token" URL parameter
+        String token = req.getParameter(TOKEN_URL_PARAM_NAME);
+        // Getting the JWKSet URL from config
+        String jwksetURL = Framework.getProperty(PROPERTY_OAUTH_JWKSET_URL);
+
         // Getting the "code" URL parameter
         String code = req.getParameter(CODE_URL_PARAM_NAME);
 
+        // SSH error out only if both code and token are not specified
         // Checking conditions on the "code" URL parameter
-        if (code == null || code.isEmpty()) {
+        if ((code == null || code.isEmpty()) && (token == null || token.isEmpty())) {
             sendError(req, "There was an error: \"" + code + "\".");
             return null;
         }
@@ -111,14 +135,33 @@ public class OpenIDConnectAuthenticator implements NuxeoAuthenticationPlugin {
                 sendError(req, "Invalid state parameter.");
             }
 
+            // SSH either use passed-in token or exchange auth code for access token
             // Validate the token
-            String accessToken = provider.getAccessToken(req, code);
+            String accessToken = (token != null && !token.isEmpty()) ? token : provider.getAccessToken(req, code);
 
             if (accessToken == null) {
                 return null;
             }
 
-            OpenIDUserInfo info = provider.getUserInfo(accessToken);
+            // SSH perform local validation of ID token for SRP flow
+            // SSH and remote userinfo call for Authorization flow
+            OpenIDUserInfo info = null;
+            if (token != null && !token.isEmpty()) {
+            	ConfigurableJWTProcessor jwtProcessor = new DefaultJWTProcessor();
+            	JWKSource keySource = new RemoteJWKSet(
+            			new URL(jwksetURL));
+            	JWSAlgorithm expectedJWSAlg = JWSAlgorithm.RS256;
+            	JWSKeySelector keySelector = new JWSVerificationKeySelector(expectedJWSAlg, keySource);
+            	jwtProcessor.setJWSKeySelector(keySelector);
+            	SecurityContext ctx = null; // optional context parameter, not required here
+            	JWTClaimsSet claimsSet = jwtProcessor.process(token, ctx);
+            	info = provider.parseUserInfo(claimsSet.toString());
+            }
+            else {
+            	info = provider.getUserInfo(accessToken);
+            }
+            // SSH
+            //OpenIDUserInfo info = provider.getUserInfo(accessToken);
 
             // Store the user info as a key in the request so apps can use it
             // later in the chain
@@ -141,7 +184,7 @@ public class OpenIDConnectAuthenticator implements NuxeoAuthenticationPlugin {
 
             return new UserIdentificationInfo(userId, userId);
 
-        } catch (NuxeoException e) {
+        } catch (NuxeoException | ParseException | BadJOSEException | JOSEException | IOException e) {
             log.error("Error while retrieve Identity From OAuth", e);
         }
 
@@ -158,11 +201,13 @@ public class OpenIDConnectAuthenticator implements NuxeoAuthenticationPlugin {
             HttpServletResponse httpResponse) {
         String error = httpRequest.getParameter(ERROR_URL_PARAM_NAME);
         String code = httpRequest.getParameter(CODE_URL_PARAM_NAME);
+        String token = httpRequest.getParameter(TOKEN_URL_PARAM_NAME);	// SSH
         String serviceProviderName = httpRequest.getParameter(PROVIDER_URL_PARAM_NAME);
         if (serviceProviderName == null) {
             return null;
         }
-        if (code == null && error == null) {
+        // SSH handle token
+        if (code == null && error == null && token == null) {
             return null;
         }
         UserIdentificationInfo userIdent = retrieveIdentityFromOAuth(httpRequest, httpResponse);
